@@ -1,1 +1,18 @@
+[theme]
+# Forces the dark background and white text for everyone
+base="dark"
 
+# Your brand's primary action color (Gold/Yellow)
+primaryColor="#FFD700"
+
+# The main background color for the UI
+backgroundColor="#0E1117"
+
+# The background for input boxes and sidebars
+secondaryBackgroundColor="#262730"
+
+# The primary text color
+textColor="#FAFAFA"
+
+# Setting the font to a clean sans-serif for body text
+font="sans serif"
