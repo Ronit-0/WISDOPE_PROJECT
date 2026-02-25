@@ -131,9 +131,9 @@ with tab4:
     with s1: st.markdown("[![FB](https://img.icons8.com/color/48/facebook-new.png)](https://www.facebook.com/profile.php?id=61573780375951)")
     with s2: st.markdown("[![IG](https://img.icons8.com/color/48/instagram-new.png)](https://www.instagram.com/rishavkarar.09/)")
     with s3: st.markdown("[![Threads](https://img.icons8.com/color/48/threads.png)](https://www.threads.com/@rishavkarar.09)")
-    with s3: st.markdown("[![WA](https://img.icons8.com/color/48/whatsapp.png)](https://wa.me/917044443309)")
-    with s4: st.markdown("[![LI](https://img.icons8.com/color/48/linkedin.png)](https://linkedin.com)")
-    with s5: st.markdown("[![YT](https://img.icons8.com/color/48/youtube-play.png)](https://youtube.com)")
+    with s4: st.markdown("[![WA](https://img.icons8.com/color/48/whatsapp.png)](https://wa.me/917044443309)")
+    with s5: st.markdown("[![LI](https://img.icons8.com/color/48/linkedin.png)](https://linkedin.com)")
+    with s6: st.markdown("[![YT](https://img.icons8.com/color/48/youtube-play.png)](https://youtube.com)")
 
 with tab5:
     st.header("📝 Student Registration")
