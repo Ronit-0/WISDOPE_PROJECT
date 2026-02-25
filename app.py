@@ -12,24 +12,23 @@ def set_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Rakkas&display=swap');
 
-        /* 1. Hide the Top Header (GitHub, Fork, Menu) */
-        header {{visibility: hidden !important;}}
-        
-        /* 2. Hide the Bottom Footer */
-        footer {{visibility: hidden !important;}}
-
-        /* 3. TARGETED FIX: Hide the bottom-right 'Hosted with Streamlit' and GitHub icon */
-        div[data-testid="stStatusWidget"], 
-        .stDeployButton, 
-        #MainMenu, 
-        .st-emotion-cache-1wbqy5l, 
-        .st-emotion-cache-1v0lm93 {{
+        /* 1. AGGRESSIVE GLOBAL HIDE */
+        header, footer, .stDeployButton, #MainMenu, stDecoration {{
             display: none !important;
             visibility: hidden !important;
-            opacity: 0 !important;
         }}
 
-        /* 4. Background and Brand Styles */
+        /* 2. Target the specific bottom-right status container */
+        [data-testid="stStatusWidget"], [data-testid="stToolbar"], [data-testid="stDecoration"] {{
+            display: none !important;
+        }}
+
+        /* 3. The "Everything" Fix: Hides any floating button in the corners */
+        .st-emotion-cache-zq59db, .st-emotion-cache-1wbqy5l, .st-emotion-cache-1v0lm93, .st-emotion-cache-6q9sum {{
+            display: none !important;
+        }}
+
+        /* 4. Force background and brand styles */
         .stApp {{
             background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
                         url("{bg_image_url}");
