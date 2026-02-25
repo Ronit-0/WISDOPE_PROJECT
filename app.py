@@ -5,16 +5,30 @@ from PIL import Image
 # 1. Force Dark Mode & Page Config
 st.set_page_config(page_title="Wisdope Academy", page_icon="🔬", layout="wide")
 
-import streamlit.components.v1 as components
-
 def set_custom_style():
     bg_image_url = "https://raw.githubusercontent.com/Ronit-0/WISDOPE_PROJECT/main/images/IMG_8098.PNG"
 
-    # 1. Standard CSS for the look
     st.markdown(f"""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Rakkas&display=swap');
-        header, footer {{visibility: hidden !important; height: 0 !important;}}
+
+        /* 1. CLIPPING THE VIEWPORT: This crops the top and bottom 50px of the site */
+        .stApp {{
+            margin-top: -55px !important;
+            margin-bottom: -50px !important;
+            height: calc(100vh + 105px) !important;
+            overflow: hidden !important;
+        }}
+
+        /* 2. SUPER-HIDE: Targeting every possible branding class */
+        header, footer, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"], [data-testid="stDecoration"] {{
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            width: 0 !important;
+        }}
+
+        /* 3. Background and Brand Styles */
         .stApp {{
             background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
                         url("{bg_image_url}");
@@ -23,35 +37,17 @@ def set_custom_style():
             background-attachment: fixed;
             color: white;
         }}
+
         .wisdope-brand {{
             font-family: 'Rakkas', serif;
+            font-display: swap; 
             font-size: 72px !important;
             color: white;
             line-height: 1;
+            padding-top: 60px; /* Adjusting for the top crop */
         }}
         </style>
     """, unsafe_allow_html=True)
-
-    # 2. THE NUCLEAR FIX: JavaScript to remove the 'Red Crown' and 'Deploy' buttons
-    components.html("""
-        <script>
-        const removeElements = () => {
-            // Target the Red Crown/Status widget
-            const statusWidget = window.parent.document.querySelector('div[data-testid="stStatusWidget"]');
-            if (statusWidget) statusWidget.style.display = 'none';
-
-            // Target the Deploy button and Main Menu
-            const deployBtn = window.parent.document.querySelector('.stDeployButton');
-            if (deployBtn) deployBtn.style.display = 'none';
-            
-            const mainMenu = window.parent.document.querySelector('#MainMenu');
-            if (mainMenu) mainMenu.style.display = 'none';
-        };
-        
-        // Run immediately and then check again every 1 second to make sure they stay gone
-        setInterval(removeElements, 1000);
-        </script>
-    """, height=0)
     
 # Call the style function (No longer needs the file path as an argument)
 set_custom_style()
