@@ -12,20 +12,17 @@ def set_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Rakkas&display=swap');
 
-        /* 1. CLIPPING THE VIEWPORT: This crops the top and bottom 50px of the site */
-        .stApp {{
-            margin-top: -55px !important;
-            margin-bottom: -50px !important;
-            height: calc(100vh + 105px) !important;
-            overflow: hidden !important;
-        }}
-
-        /* 2. SUPER-HIDE: Targeting every possible branding class */
-        header, footer, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"], [data-testid="stDecoration"] {{
+        /* 1. COMPLETELY WIPE TOP & BOTTOM BRANDING */
+        header, footer, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"] {{
             display: none !important;
             visibility: hidden !important;
-            height: 0 !important;
-            width: 0 !important;
+        }}
+
+        /* 2. THE NUCLEAR OPTION: Targeting the specific floating container */
+        /* This pushes the 'Hosted with Streamlit' badge 500 pixels off the screen */
+        .st-emotion-cache-1wbqy5l, .st-emotion-cache-1v0lm93, .st-emotion-cache-zq59db {{
+            transform: translateY(500px) !important;
+            display: none !important;
         }}
 
         /* 3. Background and Brand Styles */
@@ -44,7 +41,6 @@ def set_custom_style():
             font-size: 72px !important;
             color: white;
             line-height: 1;
-            padding-top: 60px; /* Adjusting for the top crop */
         }}
         </style>
     """, unsafe_allow_html=True)
