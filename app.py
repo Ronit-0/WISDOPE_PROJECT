@@ -148,7 +148,7 @@ with tab5:
         """)
         
         # Replace the URL below with your actual Google Form link
-        google_form_url = "https://forms.gle/your-actual-google-form-link"
+        google_form_url = "https://forms.gle/ksZPZTy19kCnuPZg7"
         
         st.link_button("🚀 Open Registration Form", google_form_url, use_container_width=True)
 
