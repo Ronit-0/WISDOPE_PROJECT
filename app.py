@@ -6,15 +6,24 @@ from PIL import Image
 st.set_page_config(page_title="Wisdope Academy", page_icon="🔬", layout="wide")
 
 def set_custom_style():
-    # DIRECT LINK OPTIMIZATION:
-    # Replace the placeholders below with your actual GitHub username
     bg_image_url = "https://raw.githubusercontent.com/Ronit-0/WISDOPE_PROJECT/main/images/IMG_8098.PNG"
 
     st.markdown(f"""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Rakkas&display=swap');
 
-        /* Optimized Background Loading */
+        /* 1. Remove the Top Header (GitHub menu, Fork, etc.) */
+        header {{visibility: hidden;}}
+        
+        /* 2. Remove the Bottom Footer (Made with Streamlit) */
+        footer {{visibility: hidden;}}
+        
+        /* 3. Remove the padding at the top of the page */
+        .block-container {{
+            padding-top: 2rem;
+        }}
+
+        /* Existing background and font styles */
         .stApp {{
             background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
                         url("{bg_image_url}");
@@ -24,35 +33,16 @@ def set_custom_style():
             color: white;
         }}
 
-        /* Targeted Rakkas Font for WISDOPE Title with Swap display */
         .wisdope-brand {{
             font-family: 'Rakkas', serif;
             font-display: swap; 
             font-size: 72px !important;
-            font-weight: 400;
             color: white;
             margin-bottom: -10px;
-            line-height: 1;
-        }}
-        
-        .mentor-name {{
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }}
-        
-        .stTabs [data-baseweb="tab-list"] button {{
-            color: white !important;
-        }}
-
-        a {{
-            color: #FFD700 !important;
-            text-decoration: underline !important;
-            font-weight: bold;
         }}
         </style>
     """, unsafe_allow_html=True)
-
+    
 # Call the style function (No longer needs the file path as an argument)
 set_custom_style()
 
