@@ -52,8 +52,6 @@ def set_custom_style():
         setInterval(removeElements, 1000);
         </script>
     """, height=0)
-
-set_custom_style()
     
 # Call the style function (No longer needs the file path as an argument)
 set_custom_style()
