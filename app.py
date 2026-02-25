@@ -12,18 +12,23 @@ def set_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Rakkas&display=swap');
 
-        /* 1. Remove the Top Header (GitHub menu, Fork, etc.) */
+        /* 1. Hide the Top Header (GitHub, Fork, Menu) */
         header {{visibility: hidden;}}
         
-        /* 2. Remove the Bottom Footer (Made with Streamlit) */
+        /* 2. Hide the Bottom Footer (Made with Streamlit) */
         footer {{visibility: hidden;}}
+
+        /* 3. Specifically hide the 'Red Crown' and GitHub icon in the bottom right */
+        #MainMenu {{visibility: hidden;}}
+        .stDeployButton {{display:none;}}
+        stDecoration {{display:none;}}
         
-        /* 3. Remove the padding at the top of the page */
-        .block-container {{
-            padding-top: 2rem;
+        /* 4. Remove the 'Hosted with Streamlit' button overlay */
+        div[data-testid="stStatusWidget"] {{
+            visibility: hidden;
         }}
 
-        /* Existing background and font styles */
+        /* 5. Existing background and brand styles */
         .stApp {{
             background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
                         url("{bg_image_url}");
@@ -39,6 +44,7 @@ def set_custom_style():
             font-size: 72px !important;
             color: white;
             margin-bottom: -10px;
+            line-height: 1;
         }}
         </style>
     """, unsafe_allow_html=True)
