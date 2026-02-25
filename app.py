@@ -111,8 +111,11 @@ with tab4:
     
     with c2:
         st.write("### 📞 Quick Connect")
+        st.write("9051965176 (Call Only)")
         st.link_button("📞 Call Rishav Sir", "tel:+919051965176")
         whatsapp_url = "https://wa.me/917044443309?text=Hello!%20I%20am%20interested%20in%20joining%20Wisdope%20Academy."
+        st.write("") # Add some spacing
+        st.write("7044443309 (Whatsapp Only)")
         st.link_button("💬 WhatsApp Message", whatsapp_url)
         st.write("**Email Us:**")
         st.markdown('<div style="background-color:rgba(0,0,0,0.5); padding:10px; border-radius:5px;">📧 <a href="mailto:rishav9101999@gmail.com">rishav9101999@gmail.com</a></div>', unsafe_allow_html=True)
@@ -124,20 +127,34 @@ with tab4:
         
     st.write("---")
     st.write("### Follow Us On:")
-    s1, s2, s3, s4, s5 = st.columns(5)
+    s1, s2, s3, s4, s5, s6 = st.columns(6)
     with s1: st.markdown("[![FB](https://img.icons8.com/color/48/facebook-new.png)](https://www.facebook.com/profile.php?id=61573780375951)")
-    with s2: st.markdown("[![IG](https://img.icons8.com/color/48/instagram-new.png)](https://www.instagram.com/rishavkarar.09)")
+    with s2: st.markdown("[![IG](https://img.icons8.com/color/48/instagram-new.png)](https://www.instagram.com/rishavkarar.09/)")
+    with s3: st.markdown("[![Threads](https://img.icons8.com/color/48/threads.png)](https://www.threads.com/@rishavkarar.09)")
     with s3: st.markdown("[![WA](https://img.icons8.com/color/48/whatsapp.png)](https://wa.me/917044443309)")
     with s4: st.markdown("[![LI](https://img.icons8.com/color/48/linkedin.png)](https://linkedin.com)")
     with s5: st.markdown("[![YT](https://img.icons8.com/color/48/youtube-play.png)](https://youtube.com)")
 
 with tab5:
     st.header("📝 Student Registration")
-    st.write("Ready to start? Fill out the form below.")
+    st.write("Ready to start your journey with Wisdope Academy? Please fill out the form below to secure your seat.")
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.link_button("🚀 Open Registration Form", "https://forms.gle/your-actual-google-form-link", use_container_width=True)
+        st.write("""
+        **What happens next?**
+        1. After you submit the form, Rishav Sir will review your details.
+        2. You will receive a call or WhatsApp message within 24 hours.
+        3. We will discuss batch availability and the start date.
+        """)
+        
+        # Replace the URL below with your actual Google Form link
+        google_form_url = "https://forms.gle/your-actual-google-form-link"
+        
+        st.link_button("🚀 Open Registration Form", google_form_url, use_container_width=True)
+
     with col2:
+        st.write("### Need Help?")
+        st.write("If you face any issues while filling the form, contact us directly:")
         st.link_button("💬 WhatsApp Support", whatsapp_url)
 
 st.divider()
