@@ -12,20 +12,7 @@ def set_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Rakkas&display=swap');
 
-        /* 1. COMPLETELY WIPE TOP & BOTTOM BRANDING */
-        header, footer, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"] {{
-            display: none !important;
-            visibility: hidden !important;
-        }}
-
-        /* 2. THE NUCLEAR OPTION: Targeting the specific floating container */
-        /* This pushes the 'Hosted with Streamlit' badge 500 pixels off the screen */
-        .st-emotion-cache-1wbqy5l, .st-emotion-cache-1v0lm93, .st-emotion-cache-zq59db {{
-            transform: translateY(500px) !important;
-            display: none !important;
-        }}
-
-        /* 3. Background and Brand Styles */
+        /* Optimized Background Loading */
         .stApp {{
             background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
                         url("{bg_image_url}");
@@ -35,15 +22,35 @@ def set_custom_style():
             color: white;
         }}
 
+        /* Targeted Rakkas Font for WISDOPE Title with Swap display */
         .wisdope-brand {{
             font-family: 'Rakkas', serif;
             font-display: swap; 
             font-size: 72px !important;
+            font-weight: 400;
             color: white;
+            margin-bottom: -10px;
             line-height: 1;
+        }}
+        
+        .mentor-name {{
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+        
+        .stTabs [data-baseweb="tab-list"] button {{
+            color: white !important;
+        }}
+
+        a {{
+            color: #FFD700 !important;
+            text-decoration: underline !important;
+            font-weight: bold;
         }}
         </style>
     """, unsafe_allow_html=True)
+
     
 # Call the style function (No longer needs the file path as an argument)
 set_custom_style()
