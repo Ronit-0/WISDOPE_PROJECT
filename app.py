@@ -201,12 +201,66 @@ with tab6:
                 else:
                     st.warning("Please enter both fields.")
     else:
+        # Dashboard for logged-in students
         st.success(f"Welcome back to Wisdope Academy, {st.session_state.user_name}!")
-        st.write(f"**Batch:** {st.session_state.user_class}")
+        current_class = st.session_state.user_class
+        st.write(f"**Batch:** {current_class}")
         st.write("---")
-        st.subheader("📚 Your Resources")
-        st.write("Your NEET preparation guides and daily practice sets are now ready.")
         
+        # 1. Nested Dictionary: Class -> Subject -> Drive Link
+        # Replace the "PASTE_LINK_HERE" with your actual Google Drive embed URLs
+        course_materials = {
+            "XII": {
+                "Physics": "PASTE_XII_PHYSICS_LINK_HERE",
+                "Chemistry": "PASTE_XII_CHEMISTRY_LINK_HERE",
+                "Biology": "PASTE_XII_BIOLOGY_LINK_HERE",
+                "Mathematics": "PASTE_XII_MATH_LINK_HERE"
+            },
+            "XI": {
+                "Physics": "PASTE_XI_PHYSICS_LINK_HERE",
+                "Chemistry": "PASTE_XI_CHEMISTRY_LINK_HERE",
+                "Biology": "PASTE_XI_BIOLOGY_LINK_HERE"
+            },
+            "X": {
+                "Science": "PASTE_X_SCIENCE_LINK_HERE",
+                "Mathematics": "PASTE_X_MATH_LINK_HERE",
+                "English": "PASTE_X_ENGLISH_LINK_HERE"
+            },
+            "IX": {
+                "Science": "PASTE_IX_SCIENCE_LINK_HERE",
+                "Mathematics": "PASTE_IX_MATH_LINK_HERE"
+            },
+            "VIII": {
+                "Science": "PASTE_VIII_SCIENCE_LINK_HERE",
+                "Mathematics": "PASTE_VIII_MATH_LINK_HERE"
+            }
+        }
+        
+        # 2. Check if the student's class exists in our database
+        if current_class in course_materials:
+            st.subheader("📚 Select Your Subject")
+            
+            # Get the list of subjects available for this specific student's class
+            available_subjects = list(course_materials[current_class].keys())
+            
+            # 3. Create a dropdown menu for the student to choose a subject
+            selected_subject = st.selectbox("Choose a subject to view materials:", available_subjects)
+            
+            if selected_subject:
+                st.write(f"### 📖 {selected_subject} Materials")
+                st.caption("These materials are view-only and cannot be downloaded.")
+                
+                # Fetch the exact link for that Class + Subject combination
+                embed_url = course_materials[current_class][selected_subject]
+                
+                # Embed the secure Google Drive file
+                import streamlit.components.v1 as components
+                components.iframe(embed_url, width=700, height=600)
+                
+        else:
+            st.info(f"Study materials for Class {current_class} are currently being compiled.")
+        
+        st.write("---")
         if st.button("Log Out"):
             st.session_state.logged_in = False
             st.rerun()
