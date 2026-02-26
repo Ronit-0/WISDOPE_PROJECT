@@ -214,7 +214,7 @@ with tab6:
                 "Physics": "PASTE_XII_PHYSICS_LINK_HERE",
                 "Chemistry": "PASTE_XII_CHEMISTRY_LINK_HERE",
                 "Biology": "PASTE_XII_BIOLOGY_LINK_HERE",
-                "Mathematics": "https://drive.google.com/file/d/1IAGRzAP_IUVbLB4I9br0J4FiynH85QKh/preview"
+                "Mathematics": "https://drive.google.com/file/d/1B58sglLGi7p05Aj6dudXx5YF7jmq449m/preview"
             },
             "XI": {
                 "Physics": "PASTE_XI_PHYSICS_LINK_HERE",
