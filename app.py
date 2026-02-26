@@ -168,15 +168,16 @@ with tab6:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
-                        # Read the sheet - using the ID from Secrets
-                        df = conn.read()
+                        # THE BYPASS: Paste your exact 'Copy link' URL inside the quotes below
+                        exact_sheet_url = "https://docs.google.com/spreadsheets/d/1WzBsjGjI4RbEnWyHUNCpM6DC7Z-76rIWypPbEL_ebEg/edit?usp=sharing"
                         
-                        # FIX: Remove Column B (auto-email) so it doesn't clash with 
-                        # Column G (your manual Email Address column)
+                        # Force the connection to read this exact URL
+                        df = conn.read(spreadsheet=exact_sheet_url)
+                        
+                        # Clean duplicate columns
                         df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
                         
-                        # Filter using exact headers from your latest screenshot
-                        # Email Address is Column G | Password is Column O
+                        # Authenticate
                         user_match = df[
                             (df['Email Address'] == login_email) & 
                             (df['Password'].astype(str) == login_pass)
@@ -188,11 +189,11 @@ with tab6:
                             st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
                             st.rerun()
                         else:
-                            st.error("Invalid email or password. Please try again.")
+                            st.error("Invalid email or password.")
                             
                     except Exception as e:
-                        st.error(f"Technical Error: {str(e)}")
-                        st.warning("Ensure your Spreadsheet ID in Secrets is correct.")
+                        # This will print the exact reason it failed if it still 404s
+                        st.error(f"Debug Error: {str(e)}")
                 else:
                     st.warning("Please enter both fields.")
     else:
