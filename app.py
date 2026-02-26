@@ -206,18 +206,6 @@ with tab6:
         current_class = st.session_state.user_class
         st.write(f"**Batch:** {current_class}")
         st.write("---")
-        # --- NEW: VIRTUAL NOTICE BOARD ---
-        st.subheader("📢 Notice Board")
-        st.caption("Latest updates and announcements from Rishav Sir.")
-        
-        # Your live Google Doc Notice Board link
-        notice_board_url = "https://docs.google.com/document/d/e/2PACX-1vSG_rBv2zgRwC6orBZfr_mAoYVMjSJAOQYXdQlfkqsw6SdupJ78xo46rS4GTiJc4QmzPI1MplgRgIzQ/pub?embedded=true" 
-        
-        import streamlit.components.v1 as components
-        # Height is set to 400 so students can scroll through announcements easily
-        components.iframe(notice_board_url, width=1000, height=700)
-        
-        st.write("---")
         # 1. Nested Dictionary: Class -> Subject -> Drive Link
         # Replace the "PASTE_LINK_HERE" with your actual Google Drive embed URLs
         course_materials = {
@@ -272,6 +260,19 @@ with tab6:
             st.info(f"Study materials for Class {current_class} are currently being compiled.")
         
         st.write("---")
+        # --- NEW: VIRTUAL NOTICE BOARD ---
+        st.subheader("📢 Notice Board")
+        st.caption("Latest updates and announcements from Rishav Sir.")
+        
+        # Your live Google Doc Notice Board link
+        notice_board_url = "https://docs.google.com/document/d/e/2PACX-1vSG_rBv2zgRwC6orBZfr_mAoYVMjSJAOQYXdQlfkqsw6SdupJ78xo46rS4GTiJc4QmzPI1MplgRgIzQ/pub?embedded=true" 
+        
+        import streamlit.components.v1 as components
+        # Height is set to 400 so students can scroll through announcements easily
+        components.iframe(notice_board_url, width=1000, height=700, scorlling= True)
+        
+        st.write("---")
+ 
         if st.button("Log Out"):
             st.session_state.logged_in = False
             st.rerun()
