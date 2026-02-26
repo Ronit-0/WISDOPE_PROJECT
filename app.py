@@ -56,7 +56,7 @@ st.write("Coaching Classes for Maths, Physics, Chemistry & Biology")
 st.write("---")
 
 # 3. Main Features & Navigation
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Why Join Us?", "Course Details", "Gallery", "Contact & Location", "Join Wisdope"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Why Join Us?", "Course Details", "Gallery", "Contact & Location", "Join Wisdope" , "Student Login"])
 
 with tab1:
     st.header("Why join WISDOPE?")
@@ -147,6 +147,54 @@ with tab5:
         st.write("### Need Help?")
         st.write("If you face any issues while filling the form, contact us directly:")
         st.link_button("💬 WhatsApp Support", whatsapp_url)
+# --- TAB 6: STUDENT PORTAL ---
+with tab6:
+    st.header("🔐 Student Portal")
+    
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        st.info("Log in to access exclusive study mats and NEET preparation guides.")
+        
+        # Login Inputs
+        login_email = st.text_input("Enter your Registered Email Address")
+        login_pass = st.text_input("Enter 8-digit Password", type="password")
+        
+        if st.button("Access Portal"):
+            if login_email and login_pass:
+                try:
+                    from streamlit_gsheets import GSheetsConnection
+                    conn = st.connection("gsheets", type=GSheetsConnection)
+                    df = conn.read()
+                    
+                    # Verify credentials using exact column names from your sheet
+                    # Matches "Email Address" and "Password" columns
+                    user = df[(df['Email Address'] == login_email) & (df['Password'].astype(str) == login_pass)]
+                    
+                    if not user.empty:
+                        st.session_state.logged_in = True
+                        st.session_state.user_name = user.iloc[0]["Student's Full Name"]
+                        st.session_state.user_class = user.iloc[0]["Current Class/Grade Level"]
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials. Please check your email or contact Rishav Sir.")
+                except Exception as e:
+                    st.error("Connection Error. Please ensure the Google Sheet is shared correctly.")
+            else:
+                st.warning("Please fill in both fields.")
+
+    else:
+        # User is logged in
+        st.success(f"Welcome to Wisdope Academy, {st.session_state.user_name}!")
+        st.write(f"**Class:** {st.session_state.user_class}")
+        st.write("---")
+        st.subheader("📁 Your Resources")
+        st.write("Your personalized study materials will appear here shortly.")
+        
+        if st.button("Log Out"):
+            st.session_state.logged_in = False
+            st.rerun()
 
 st.divider()
 st.caption("© 2026 Wisdope Academy | Associated with Bose Informatics")
