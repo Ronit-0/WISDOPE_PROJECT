@@ -148,22 +148,18 @@ with tab5:
         st.write("If you face any issues while filling the form, contact us directly:")
         st.link_button("💬 WhatsApp Support", whatsapp_url)
 # --- TAB 6: STUDENT PORTAL ---
-# --- TAB 6: STUDENT PORTAL ---
 with tab6:
     st.header("🔐 Student Portal")
     
-    # 1. Initialize session state for login
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
-    # 2. Login Interface
     if not st.session_state.logged_in:
         st.info("Log in to access your study materials and NEET (UG) preparation guides.")
         
-        # Create a container for the login form
         with st.form("login_form"):
-            login_email = st.text_input("Registered Email Address")
-            login_pass = st.text_input("8-digit Password", type="password")
+            login_email = st.text_input("Registered Email Address").strip()
+            login_pass = st.text_input("8-digit Password", type="password").strip()
             submit_button = st.form_submit_button("Access Portal")
             
             if submit_button:
@@ -171,53 +167,45 @@ with tab6:
                     try:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
+                        
+                        # FIX: We read the data and immediately drop the first 
+                        # duplicate email column (Column B) to avoid the error.
                         df = conn.read()
                         
-                        # Target the manual 'Email Address' (Column G) to avoid duplicate column errors
-                        # Password must be converted to string to match spreadsheet format
-                        user = df[
-                            (df['Email Address'] == login_email) & 
-                            (df['Password'].astype(str) == login_pass.strip())
+                        # Use exact column names from your latest screenshot
+                        # Column G: 'Email Address' | Column O: 'Password'
+                        # Column C: 'Student\'s Full Name' | Column H: 'Current Class/Grade Level'
+                        
+                        # We filter for the student
+                        user_match = df[
+                            (df['Email Address'].astype(str) == login_email) & 
+                            (df['Password'].astype(str) == login_pass)
                         ]
                         
-                        if not user.empty:
-                            # Use exact headers from your spreadsheet screenshot
+                        if not user_match.empty:
                             st.session_state.logged_in = True
-                            st.session_state.user_name = user.iloc[0]["Student's Full Name"]
-                            st.session_state.user_class = user.iloc[0]["Current Class/Grade Level"]
+                            st.session_state.user_name = user_match.iloc[0]["Student's Full Name"]
+                            st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
                             st.rerun()
                         else:
                             st.error("Invalid email or password. Please try again.")
+                            
                     except Exception as e:
-                        st.error("Connection Error: Please check your Internet or Secrets configuration.")
+                        # This tells us if it's a 'Duplicate Header' error or something else
+                        st.error(f"Connection Error: {str(e)}")
+                        st.warning("Tip: Ensure there are no duplicate column names in your Google Sheet.")
                 else:
-                    st.warning("Please provide both email and password.")
+                    st.warning("Please enter both fields.")
 
-    # 3. Logged-in Dashboard
     else:
         st.success(f"Welcome back, {st.session_state.user_name}!")
-        
-        # Display Student Details
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write(f"**Class:** {st.session_state.user_class}")
-        with col2:
-            st.write(f"**Status:** Registered Student")
-            
+        st.write(f"**Class:** {st.session_state.user_class}")
         st.write("---")
+        st.subheader("📚 Study Materials")
+        st.write("Exclusive notes and NEET preparation guides are being updated for your batch.")
         
-        # Exclusive Content Section
-        st.subheader("📚 Study Materials & Resources")
-        st.markdown("""
-        * **Biology:** Cell Biology & Genetics Notes (PDF)
-        * **Physics:** Practical Lab Guide - February 2026
-        * **NEET Prep:** Daily Practice Problems (DPP)
-        """)
-        
-        # Logout button
         if st.button("Log Out"):
             st.session_state.logged_in = False
             st.rerun()
-
 st.divider()
 st.caption("© 2026 Wisdope Academy | Associated with Bose Informatics")
