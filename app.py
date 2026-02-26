@@ -206,7 +206,18 @@ with tab6:
         current_class = st.session_state.user_class
         st.write(f"**Batch:** {current_class}")
         st.write("---")
+        # --- NEW: VIRTUAL NOTICE BOARD ---
+        st.subheader("📢 Notice Board")
+        st.caption("Latest updates and announcements from Rishav Sir.")
         
+        # Your live Google Doc Notice Board link
+        notice_board_url = "https://docs.google.com/document/d/e/2PACX-1vSG_rBv2zgRwC6orBZfr_mAoYVMjSJAOQYXdQlfkqsw6SdupJ78xo46rS4GTiJc4QmzPI1MplgRgIzQ/pub" 
+        
+        import streamlit.components.v1 as components
+        # Height is set to 400 so students can scroll through announcements easily
+        components.iframe(notice_board_url, width=1000, height=400, scrolling=True)
+        
+        st.write("---")
         # 1. Nested Dictionary: Class -> Subject -> Drive Link
         # Replace the "PASTE_LINK_HERE" with your actual Google Drive embed URLs
         course_materials = {
