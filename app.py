@@ -215,7 +215,7 @@ with tab6:
         # Nested Dictionary: Class -> Subject -> Drive Link
         course_materials = {
             "XII": {
-                "Mathematics": "https://drive.google.com/file/d/1IAGRzAP_IUVbLB4I9br0J4FiynH85QKh/preview",
+                "Mathematics": "https://drive.google.com/file/d/1B58sglLGi7p05Aj6dudXx5YF7jmq449m/preview",
                 "Physics": "PASTE_XII_PHYSICS_LINK_HERE",
                 "Chemistry": "PASTE_XII_CHEMISTRY_LINK_HERE",
                 "Biology": "PASTE_XII_BIOLOGY_LINK_HERE"
@@ -257,7 +257,7 @@ with tab6:
                 # SAFETY CHECK: Only try to load it if it's a real web link
                 if embed_url.startswith("http"):
                     # Width and height set to 1000x700 as requested
-                    components.iframe(embed_url, width=1000, height=700)
+                    components.iframe(embed_url, width=700, height=500)
                 else:
                     st.info("Study materials for this specific subject will be uploaded shortly.")
                 
