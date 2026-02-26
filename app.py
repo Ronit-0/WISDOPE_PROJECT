@@ -149,136 +149,161 @@ with tab5:
         st.link_button("💬 WhatsApp Support", whatsapp_url)
 # --- TAB 6: STUDENT PORTAL ---
 with tab6:
-    st.header("🔐 Student Portal")
+    st.header("🔐 Wisdope Portal")
     
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
-        st.info("Log in to access your study materials and NEET (UG) preparation guides.")
+        st.info("Log in to access your study materials or the Admin Dashboard.")
         
         with st.form("login_form"):
-            # Force lowercase to prevent case-sensitive email errors
             login_email = st.text_input("Registered Email Address").strip().lower()
-            login_pass = st.text_input("8-digit Password", type="password").strip()
+            login_pass = st.text_input("Password", type="password").strip()
             submit_button = st.form_submit_button("Access Portal")
             
             if submit_button:
                 if login_email and login_pass:
+                    # --- SECURE ADMIN LOGIN ---
+                    if login_email == st.secrets["admin"]["email"] and login_pass == st.secrets["admin"]["password"]:
+                        st.session_state.logged_in = True
+                        st.session_state.user_name = "Rishav Sir"
+                        st.session_state.user_class = "ADMIN"
+                        st.rerun()
+                    
+                    # --- NORMAL STUDENT LOGIN ---
+                    else:
+                        try:
+                            from streamlit_gsheets import GSheetsConnection
+                            conn = st.connection("gsheets", type=GSheetsConnection)
+                            df = conn.read(worksheet="Registration")
+                            
+                            df.columns = df.columns.str.strip()
+                            df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
+                            
+                            sheet_emails = df['Email Address'].astype(str).str.strip().str.lower()
+                            sheet_passwords = df['Password'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+                            
+                            user_match = df[(sheet_emails == login_email) & (sheet_passwords == login_pass)]
+                            
+                            if not user_match.empty:
+                                st.session_state.logged_in = True
+                                st.session_state.user_name = user_match.iloc[0]["Student's Full Name"]
+                                st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
+                                st.rerun()
+                            else:
+                                st.error("Invalid email or password.")
+                        except Exception as e:
+                            st.error(f"Debug Error: {str(e)}")
+                else:
+                    st.warning("Please enter both fields.")
+
+    else:
+        # ==========================================
+        #           THE ADMIN DASHBOARD
+        # ==========================================
+        if st.session_state.user_class == "ADMIN":
+            st.success("Welcome to the Admin Dashboard, Rishav Sir!")
+            st.write("Add new subjects and PDF/Video links to the database here.")
+            
+            import pandas as pd
+            
+            # --- 1. DYNAMIC CLASS DROPDOWN ---
+            class_options = ["XII", "XI", "X", "IX", "VIII", "+ Add New Class"]
+            selected_option = st.selectbox("Target Class", class_options)
+            
+            # If they select "Add New Class", a text box magically appears!
+            if selected_option == "+ Add New Class":
+                final_class = st.text_input("Enter New Class Name (e.g., VI, Target Batch)").strip()
+            else:
+                final_class = selected_option
+                
+            # --- 2. SUBJECT & LINK INPUTS ---
+            add_subject = st.text_input("Subject Name (e.g., Mathematics, Botany)").strip()
+            raw_link = st.text_input("Google Drive Share Link (Standard or Preview)").strip()
+            
+            # --- THE MAGIC LINK CONVERTER ---
+            # Automatically chops off /view or /edit and forces /preview
+            final_link = raw_link
+            if "/view" in raw_link:
+                final_link = raw_link.split("/view")[0] + "/preview"
+            elif "/edit" in raw_link:
+                final_link = raw_link.split("/edit")[0] + "/preview"
+
+            # Publish Button (outside of a form to allow the dynamic dropdown to work)
+            if st.button("Publish Material to Students", type="primary"):
+                # Safety Validation
+                if final_class and add_subject and final_link:
                     try:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
-                        df = conn.read(worksheet="Registration")
+                        df_mat = conn.read(worksheet="Materials")
+                        new_data = pd.DataFrame([{"Class": final_class, "Subject": add_subject, "Link": final_link}])
                         
-                        # CLEANING 1: Remove accidental spaces from Google Form column names
-                        df.columns = df.columns.str.strip()
+                        updated_df = pd.concat([df_mat, new_data], ignore_index=True)
+                        conn.update(worksheet="Materials", data=updated_df)
                         
-                        # CLEANING 2: Handle duplicate columns
-                        df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
-                        
-                        # CLEANING 3: The "Invisible Decimal" Fix
-                        # We force the sheet passwords to strings and cut off the ".0" if Python added it
-                        sheet_emails = df['Email Address'].astype(str).str.strip().str.lower()
-                        sheet_passwords = df['Password'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-                        
-                        # Verify the user
-                        user_match = df[
-                            (sheet_emails == login_email) & 
-                            (sheet_passwords == login_pass)
-                        ]
-                        
-                        if not user_match.empty:
-                            st.session_state.logged_in = True
-                            st.session_state.user_name = user_match.iloc[0]["Student's Full Name"]
-                            st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
-                            st.rerun()
-                        else:
-                            st.error("Invalid email or password. Please try again.")
-                            
+                        st.success(f"✅ Successfully published **{add_subject}** for **Class {final_class}**!")
+                        st.caption(f"Automated Link Stored: {final_link}")
                     except Exception as e:
-                        st.error(f"Debug Error: {str(e)}")
+                        st.error(f"Failed to publish: Make sure the 'Materials' tab exists in your Google Sheet! Error: {str(e)}")
                 else:
-                    st.warning("Please enter both fields.")
-    else:
-        # Dashboard for logged-in students
-        st.success(f"Welcome back to Wisdope Academy, {st.session_state.user_name}!")
-        current_class = st.session_state.user_class
-        st.write(f"**Batch:** {current_class}")
-        st.write("---")
-        
-        import streamlit.components.v1 as components
+                    st.warning("Please fill in all fields before publishing.")
+            
+            st.write("---")
+            if st.button("Log Out"):
+                st.session_state.logged_in = False
+                st.rerun()
 
-        # --- 1. STUDY MATERIALS SECTION (Now at the top) ---
-        st.subheader("📚 Select Your Subject")
-        
-        # Nested Dictionary: Class -> Subject -> Drive Link
-        course_materials = {
-            "XII": {
-                "Mathematics": "https://drive.google.com/file/d/1B58sglLGi7p05Aj6dudXx5YF7jmq449m/preview",
-                "Physics": "PASTE_XII_PHYSICS_LINK_HERE",
-                "Chemistry": "PASTE_XII_CHEMISTRY_LINK_HERE",
-                "Biology": "PASTE_XII_BIOLOGY_LINK_HERE"
-            },
-            "XI": {
-                "Physics": "PASTE_XI_PHYSICS_LINK_HERE",
-                "Chemistry": "PASTE_XI_CHEMISTRY_LINK_HERE",
-                "Biology": "PASTE_XI_BIOLOGY_LINK_HERE"
-            },
-            "X": {
-                "Science": "PASTE_X_SCIENCE_LINK_HERE",
-                "Mathematics": "PASTE_X_MATH_LINK_HERE",
-                "English": "PASTE_X_ENGLISH_LINK_HERE"
-            },
-            "IX": {
-                "Science": "PASTE_IX_SCIENCE_LINK_HERE",
-                "Mathematics": "PASTE_IX_MATH_LINK_HERE"
-            },
-            "VIII": {
-                "Science": "PASTE_VIII_SCIENCE_LINK_HERE",
-                "Mathematics": "PASTE_VIII_MATH_LINK_HERE"
-            }
-        }
-        
-        # Check if the student's class exists in our database
-        if current_class in course_materials:
-            
-            # Create a dropdown menu for the student to choose a subject
-            available_subjects = list(course_materials[current_class].keys())
-            selected_subject = st.selectbox("Choose a subject to view materials:", available_subjects)
-            
-            if selected_subject:
-                st.write(f"### 📖 {selected_subject} Materials")
-                st.caption("These materials are view-only and cannot be downloaded.")
-                
-                # Fetch the exact link for that Class + Subject
-                embed_url = course_materials[current_class][selected_subject]
-                
-                # SAFETY CHECK: Only try to load it if it's a real web link
-                if embed_url.startswith("http"):
-                    # Width and height set to 1000x700 as requested
-                    components.iframe(embed_url, width=700, height=600)
-                else:
-                    st.info("Study materials for this specific subject will be uploaded shortly.")
-                
+        # ==========================================
+        #          THE STUDENT DASHBOARD
+        # ==========================================
         else:
-            st.info(f"Study materials for Class {current_class} are currently being compiled.")
-        
-        st.write("---")
-        
-        # --- 2. VIRTUAL NOTICE BOARD (Moved to the bottom) ---
-        st.subheader("📢 Notice Board")
-        st.caption("Latest updates and announcements from Rishav Sir.")
-        
-        # Live Google Doc Notice Board link with the ?embedded=true banner fix
-        notice_board_url = "https://docs.google.com/document/d/e/2PACX-1vSG_rBv2zgRwC6orBZfr_mAoYVMjSJAOQYXdQlfkqsw6SdupJ78xo46rS4GTiJc4QmzPI1MplgRgIzQ/pub?embedded=true" 
-        
-        # Width and height set to 1000x700 as requested
-        components.iframe(notice_board_url, width=1000, height=700, scrolling=True)
-        
-        st.write("---")
-        if st.button("Log Out"):
-            st.session_state.logged_in = False
-            st.rerun()
+            st.success(f"Welcome back to Wisdope Academy, {st.session_state.user_name}!")
+            current_class = st.session_state.user_class
+            st.write(f"**Batch:** {current_class}")
+            st.write("---")
+            
+            import streamlit.components.v1 as components
+            
+            st.subheader("📚 Select Your Subject")
+            
+            try:
+                from streamlit_gsheets import GSheetsConnection
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                
+                materials_df = conn.read(worksheet="Materials")
+                student_materials = materials_df[materials_df["Class"].astype(str).str.strip() == str(current_class).strip()]
+                
+                if not student_materials.empty:
+                    available_subjects = student_materials["Subject"].tolist()
+                    selected_subject = st.selectbox("Choose a subject:", available_subjects)
+                    
+                    if selected_subject:
+                        st.write(f"### 📖 {selected_subject} Materials")
+                        st.caption("These materials are view-only and cannot be downloaded.")
+                        
+                        embed_url = student_materials[student_materials["Subject"] == selected_subject].iloc[0]["Link"]
+                        
+                        if str(embed_url).startswith("http"):
+                            components.iframe(embed_url, width=1000, height=700)
+                        else:
+                            st.info("Link is broken or missing.")
+                else:
+                    st.info(f"Study materials for Class {current_class} are currently being compiled.")
+            
+            except Exception as e:
+                st.error("Could not load study materials database. Please contact Rishav Sir.")
+            
+            st.write("---")
+            st.subheader("📢 Notice Board")
+            st.caption("Latest updates and announcements from Rishav Sir.")
+            components.iframe(st.secrets["admin"]["notice_board"], width=1000, height=700, scrolling=True)
+            
+            st.write("---")
+            if st.button("Log Out"):
+                st.session_state.logged_in = False
+                st.rerun()
 st.divider()
 st.caption("© 2026 Wisdope Academy | Associated with Bose Informatics")
