@@ -206,14 +206,19 @@ with tab6:
         current_class = st.session_state.user_class
         st.write(f"**Batch:** {current_class}")
         st.write("---")
-        # 1. Nested Dictionary: Class -> Subject -> Drive Link
-        # Replace the "PASTE_LINK_HERE" with your actual Google Drive embed URLs
+        
+        import streamlit.components.v1 as components
+
+        # --- 1. STUDY MATERIALS SECTION (Now at the top) ---
+        st.subheader("📚 Select Your Subject")
+        
+        # Nested Dictionary: Class -> Subject -> Drive Link
         course_materials = {
             "XII": {
+                "Mathematics": "https://drive.google.com/file/d/1IAGRzAP_IUVbLB4I9br0J4FiynH85QKh/preview",
                 "Physics": "PASTE_XII_PHYSICS_LINK_HERE",
                 "Chemistry": "PASTE_XII_CHEMISTRY_LINK_HERE",
-                "Biology": "PASTE_XII_BIOLOGY_LINK_HERE",
-                "Mathematics": "https://drive.google.com/file/d/1B58sglLGi7p05Aj6dudXx5YF7jmq449m/preview"
+                "Biology": "PASTE_XII_BIOLOGY_LINK_HERE"
             },
             "XI": {
                 "Physics": "PASTE_XI_PHYSICS_LINK_HERE",
@@ -235,44 +240,43 @@ with tab6:
             }
         }
         
-        # 2. Check if the student's class exists in our database
+        # Check if the student's class exists in our database
         if current_class in course_materials:
-            st.subheader("📚 Select Your Subject")
             
-            # Get the list of subjects available for this specific student's class
+            # Create a dropdown menu for the student to choose a subject
             available_subjects = list(course_materials[current_class].keys())
-            
-            # 3. Create a dropdown menu for the student to choose a subject
             selected_subject = st.selectbox("Choose a subject to view materials:", available_subjects)
             
             if selected_subject:
                 st.write(f"### 📖 {selected_subject} Materials")
                 st.caption("These materials are view-only and cannot be downloaded.")
                 
-                # Fetch the exact link for that Class + Subject combination
+                # Fetch the exact link for that Class + Subject
                 embed_url = course_materials[current_class][selected_subject]
                 
-                # Embed the secure Google Drive file
-                import streamlit.components.v1 as components
-                components.iframe(embed_url, width=700, height=600)
+                # SAFETY CHECK: Only try to load it if it's a real web link
+                if embed_url.startswith("http"):
+                    # Width and height set to 1000x700 as requested
+                    components.iframe(embed_url, width=1000, height=700)
+                else:
+                    st.info("Study materials for this specific subject will be uploaded shortly.")
                 
         else:
             st.info(f"Study materials for Class {current_class} are currently being compiled.")
         
         st.write("---")
-        # --- NEW: VIRTUAL NOTICE BOARD ---
+        
+        # --- 2. VIRTUAL NOTICE BOARD (Moved to the bottom) ---
         st.subheader("📢 Notice Board")
         st.caption("Latest updates and announcements from Rishav Sir.")
         
-        # Your live Google Doc Notice Board link
+        # Live Google Doc Notice Board link with the ?embedded=true banner fix
         notice_board_url = "https://docs.google.com/document/d/e/2PACX-1vSG_rBv2zgRwC6orBZfr_mAoYVMjSJAOQYXdQlfkqsw6SdupJ78xo46rS4GTiJc4QmzPI1MplgRgIzQ/pub?embedded=true" 
         
-        import streamlit.components.v1 as components
-        # Height is set to 400 so students can scroll through announcements easily
-        components.iframe(notice_board_url, width=1000, height=700, scorlling= True)
+        # Width and height set to 1000x700 as requested
+        components.iframe(notice_board_url, width=1000, height=700, scrolling=True)
         
         st.write("---")
- 
         if st.button("Log Out"):
             st.session_state.logged_in = False
             st.rerun()
