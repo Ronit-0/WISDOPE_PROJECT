@@ -169,10 +169,10 @@ with tab6:
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
                         # Read the sheet - using the ID from Secrets
-                        # We specify the worksheet name to be 100% sure we are on the right tab
-                        df = conn.read(worksheet="Registration") 
+                        df = conn.read()
                         
-                        # Fix for duplicate column names
+                        # FIX: Remove Column B (auto-email) so it doesn't clash with 
+                        # Column G (your manual Email Address column)
                         df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
                         
                         # Filter using exact headers from your latest screenshot
@@ -191,15 +191,16 @@ with tab6:
                             st.error("Invalid email or password. Please try again.")
                             
                     except Exception as e:
-                        st.error(f"Connection Error: {str(e)}")
+                        st.error(f"Technical Error: {str(e)}")
+                        st.warning("Ensure your Spreadsheet ID in Secrets is correct.")
                 else:
                     st.warning("Please enter both fields.")
     else:
-        st.success(f"Welcome back, {st.session_state.user_name}!")
-        st.write(f"**Class:** {st.session_state.user_class}")
+        st.success(f"Welcome back to Wisdope Academy, {st.session_state.user_name}!")
+        st.write(f"**Batch:** {st.session_state.user_class}")
         st.write("---")
-        st.subheader("📚 Study Materials")
-        st.write("Your NEET preparation guides and daily practice sets are now ready for download.")
+        st.subheader("📚 Your Resources")
+        st.write("Your NEET preparation guides and daily practice sets are now ready.")
         
         if st.button("Log Out"):
             st.session_state.logged_in = False
