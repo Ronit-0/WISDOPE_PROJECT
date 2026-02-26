@@ -215,7 +215,7 @@ with tab6:
         
         import streamlit.components.v1 as components
         # Height is set to 400 so students can scroll through announcements easily
-        components.iframe(notice_board_url, width=1000, height=400, scrolling=True)
+        components.iframe(notice_board_url, width=1000, height=700)
         
         st.write("---")
         # 1. Nested Dictionary: Class -> Subject -> Drive Link
