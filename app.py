@@ -168,16 +168,16 @@ with tab6:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
-                        # THE BYPASS: Paste your exact 'Copy link' URL inside the quotes below
-                        exact_sheet_url = "https://docs.google.com/spreadsheets/d/1WzBsjGjI4RbEnWyHUNCpM6DC7Z-76rIWypPbEL_ebEg/edit?usp=sharing"
+                        # Use the exact, pure ID from your URL to avoid 404/401 errors
+                        exact_sheet_id = "1WzBsjGjI4RbEnWyHUNCpM6DC7Z-76rIWypPbEL_ebEg"
                         
-                        # Force the connection to read this exact URL
-                        df = conn.read(spreadsheet=exact_sheet_url)
+                        # Read the sheet directly via the ID
+                        df = conn.read(spreadsheet=exact_sheet_id)
                         
-                        # Clean duplicate columns
+                        # Clean duplicate columns (handles the double 'Email address' issue)
                         df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
                         
-                        # Authenticate
+                        # Verify the user
                         user_match = df[
                             (df['Email Address'] == login_email) & 
                             (df['Password'].astype(str) == login_pass)
@@ -189,10 +189,9 @@ with tab6:
                             st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
                             st.rerun()
                         else:
-                            st.error("Invalid email or password.")
+                            st.error("Invalid email or password. Please try again.")
                             
                     except Exception as e:
-                        # This will print the exact reason it failed if it still 404s
                         st.error(f"Debug Error: {str(e)}")
                 else:
                     st.warning("Please enter both fields.")
