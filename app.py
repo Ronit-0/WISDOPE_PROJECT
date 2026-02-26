@@ -168,11 +168,8 @@ with tab6:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
-                        # Use the exact pure ID
-                        exact_sheet_id = "1WzBsjGjI4RbEnWyHUNCpM6DC7Z-76rIWypPbEL_ebEg"
-                        
-                        # Read the sheet directly via the ID
-                        df = conn.read(spreadsheet=exact_sheet_id)
+                        # Just call read() with the worksheet name. It will use the URL and keys from Secrets!
+                        df = conn.read(worksheet="Registration")
                         
                         # Clean duplicate columns
                         df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
