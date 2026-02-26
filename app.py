@@ -255,7 +255,7 @@ with tab6:
                 
                 # Embed the secure Google Drive file
                 import streamlit.components.v1 as components
-                components.iframe(embed_url, width=700, height=600)
+                components.iframe(embed_url, width=1000, height=800)
                 
         else:
             st.info(f"Study materials for Class {current_class} are currently being compiled.")
