@@ -158,7 +158,6 @@ with tab6:
         st.info("Log in to access your study materials and NEET (UG) preparation guides.")
         
         with st.form("login_form"):
-            # .strip() removes accidental spaces from the input
             login_email = st.text_input("Registered Email Address").strip()
             login_pass = st.text_input("8-digit Password", type="password").strip()
             submit_button = st.form_submit_button("Access Portal")
@@ -169,44 +168,38 @@ with tab6:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
-                        # We read the sheet using the connection defined in Secrets
-                        df = conn.read()
+                        # Read the sheet - using the ID from Secrets
+                        # We specify the worksheet name to be 100% sure we are on the right tab
+                        df = conn.read(worksheet="Registration") 
                         
-                        # DATA CLEANING: Remove the first auto-collected 'Email address' 
-                        # to fix the 'Duplicate Header' or 'Ambiguity' error.
-                        # We keep the 2nd one (Column G) which is 'Email Address'
-                        df_clean = df.loc[:, ~df.columns.duplicated()]
-
-                        # Filter for the student using exact column names from your sheet
-                        # Column G: Email Address | Column O: Password
-                        user_match = df_clean[
-                            (df_clean['Email Address'] == login_email) & 
-                            (df_clean['Password'].astype(str) == login_pass)
+                        # Fix for duplicate column names
+                        df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
+                        
+                        # Filter using exact headers from your latest screenshot
+                        # Email Address is Column G | Password is Column O
+                        user_match = df[
+                            (df['Email Address'] == login_email) & 
+                            (df['Password'].astype(str) == login_pass)
                         ]
                         
                         if not user_match.empty:
                             st.session_state.logged_in = True
-                            # Column C: Student's Full Name
                             st.session_state.user_name = user_match.iloc[0]["Student's Full Name"]
-                            # Column H: Current Class/Grade Level
                             st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
                             st.rerun()
                         else:
-                            st.error("Invalid email or password. Please check your credentials.")
+                            st.error("Invalid email or password. Please try again.")
                             
                     except Exception as e:
                         st.error(f"Connection Error: {str(e)}")
-                        st.warning("Please check your Internet and Secrets configuration.")
                 else:
                     st.warning("Please enter both fields.")
-
     else:
-        # Dashboard for logged-in students
         st.success(f"Welcome back, {st.session_state.user_name}!")
         st.write(f"**Class:** {st.session_state.user_class}")
         st.write("---")
-        st.subheader("📚 Your Resources")
-        st.write("NEET (UG) Chemistry and Physics materials for your batch are now available.")
+        st.subheader("📚 Study Materials")
+        st.write("Your NEET preparation guides and daily practice sets are now ready for download.")
         
         if st.button("Log Out"):
             st.session_state.logged_in = False
