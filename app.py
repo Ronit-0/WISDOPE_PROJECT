@@ -158,6 +158,7 @@ with tab6:
         st.info("Log in to access your study materials and NEET (UG) preparation guides.")
         
         with st.form("login_form"):
+            # .strip() removes accidental spaces from the input
             login_email = st.text_input("Registered Email Address").strip()
             login_pass = st.text_input("8-digit Password", type="password").strip()
             submit_button = st.form_submit_button("Access Portal")
@@ -168,41 +169,44 @@ with tab6:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
-                        # FIX: We read the data and immediately drop the first 
-                        # duplicate email column (Column B) to avoid the error.
+                        # We read the sheet using the connection defined in Secrets
                         df = conn.read()
                         
-                        # Use exact column names from your latest screenshot
-                        # Column G: 'Email Address' | Column O: 'Password'
-                        # Column C: 'Student\'s Full Name' | Column H: 'Current Class/Grade Level'
-                        
-                        # We filter for the student
-                        user_match = df[
-                            (df['Email Address'].astype(str) == login_email) & 
-                            (df['Password'].astype(str) == login_pass)
+                        # DATA CLEANING: Remove the first auto-collected 'Email address' 
+                        # to fix the 'Duplicate Header' or 'Ambiguity' error.
+                        # We keep the 2nd one (Column G) which is 'Email Address'
+                        df_clean = df.loc[:, ~df.columns.duplicated()]
+
+                        # Filter for the student using exact column names from your sheet
+                        # Column G: Email Address | Column O: Password
+                        user_match = df_clean[
+                            (df_clean['Email Address'] == login_email) & 
+                            (df_clean['Password'].astype(str) == login_pass)
                         ]
                         
                         if not user_match.empty:
                             st.session_state.logged_in = True
+                            # Column C: Student's Full Name
                             st.session_state.user_name = user_match.iloc[0]["Student's Full Name"]
+                            # Column H: Current Class/Grade Level
                             st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
                             st.rerun()
                         else:
-                            st.error("Invalid email or password. Please try again.")
+                            st.error("Invalid email or password. Please check your credentials.")
                             
                     except Exception as e:
-                        # This tells us if it's a 'Duplicate Header' error or something else
                         st.error(f"Connection Error: {str(e)}")
-                        st.warning("Tip: Ensure there are no duplicate column names in your Google Sheet.")
+                        st.warning("Please check your Internet and Secrets configuration.")
                 else:
                     st.warning("Please enter both fields.")
 
     else:
+        # Dashboard for logged-in students
         st.success(f"Welcome back, {st.session_state.user_name}!")
         st.write(f"**Class:** {st.session_state.user_class}")
         st.write("---")
-        st.subheader("📚 Study Materials")
-        st.write("Exclusive notes and NEET preparation guides are being updated for your batch.")
+        st.subheader("📚 Your Resources")
+        st.write("NEET (UG) Chemistry and Physics materials for your batch are now available.")
         
         if st.button("Log Out"):
             st.session_state.logged_in = False
