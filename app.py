@@ -211,7 +211,7 @@ with tab6:
         st.caption("Latest updates and announcements from Rishav Sir.")
         
         # Your live Google Doc Notice Board link
-        notice_board_url = "https://docs.google.com/document/d/e/2PACX-1vSG_rBv2zgRwC6orBZfr_mAoYVMjSJAOQYXdQlfkqsw6SdupJ78xo46rS4GTiJc4QmzPI1MplgRgIzQ/pub" 
+        notice_board_url = "https://docs.google.com/document/d/e/2PACX-1vSG_rBv2zgRwC6orBZfr_mAoYVMjSJAOQYXdQlfkqsw6SdupJ78xo46rS4GTiJc4QmzPI1MplgRgIzQ/pub?embedded=true" 
         
         import streamlit.components.v1 as components
         # Height is set to 400 so students can scroll through announcements easily
