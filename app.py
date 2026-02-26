@@ -257,7 +257,7 @@ with tab6:
                 # SAFETY CHECK: Only try to load it if it's a real web link
                 if embed_url.startswith("http"):
                     # Width and height set to 1000x700 as requested
-                    components.iframe(embed_url, width=700, height=500)
+                    components.iframe(embed_url, width=700, height=600)
                 else:
                     st.info("Study materials for this specific subject will be uploaded shortly.")
                 
