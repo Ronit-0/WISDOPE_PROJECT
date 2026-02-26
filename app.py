@@ -158,7 +158,8 @@ with tab6:
         st.info("Log in to access your study materials and NEET (UG) preparation guides.")
         
         with st.form("login_form"):
-            login_email = st.text_input("Registered Email Address").strip()
+            # Force lowercase to prevent case-sensitive email errors
+            login_email = st.text_input("Registered Email Address").strip().lower()
             login_pass = st.text_input("8-digit Password", type="password").strip()
             submit_button = st.form_submit_button("Access Portal")
             
@@ -168,16 +169,23 @@ with tab6:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
-                        # Just call read() with the worksheet name. It will use the URL and keys from Secrets!
                         df = conn.read(worksheet="Registration")
                         
-                        # Clean duplicate columns
+                        # CLEANING 1: Remove accidental spaces from Google Form column names
+                        df.columns = df.columns.str.strip()
+                        
+                        # CLEANING 2: Handle duplicate columns
                         df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
+                        
+                        # CLEANING 3: The "Invisible Decimal" Fix
+                        # We force the sheet passwords to strings and cut off the ".0" if Python added it
+                        sheet_emails = df['Email Address'].astype(str).str.strip().str.lower()
+                        sheet_passwords = df['Password'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
                         
                         # Verify the user
                         user_match = df[
-                            (df['Email Address'] == login_email) & 
-                            (df['Password'].astype(str) == login_pass)
+                            (sheet_emails == login_email) & 
+                            (sheet_passwords == login_pass)
                         ]
                         
                         if not user_match.empty:
