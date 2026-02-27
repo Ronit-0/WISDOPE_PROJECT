@@ -452,6 +452,7 @@ st.divider()
 #               GLOBAL FOOTER
 # ==========================================
 # Shrunk icons to 40px, reduced gap to 10px, and forced 'nowrap' so it stays on one line!
+st.write("### Follow Us On:")
 st.markdown(
     """
     <div style="display: flex; justify-content: center; flex-wrap: nowrap; gap: 10px; margin-bottom: 20px;">
