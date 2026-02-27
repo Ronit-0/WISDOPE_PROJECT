@@ -90,42 +90,90 @@ with tab3:
     else:
         st.error("Error: Image not found.")
 
+# --- TAB 4: CONTACT & LOCATION ---
 with tab4:
     st.header("📍 Visit or Contact Us")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.write("**Address:** 37, Dinu Lane, Kadamtala, Howrah-01")
-        st.write("**Landmark:** Opp. Kadamtala Bus Stand near S.B. Jewellers")
-        map_embed_url = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3684.348398031383!2d88.30456187515153!3d22.56608553322049!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a02794eb0f59967%3A0x111e1f2a32657579!2sKadamtala%20Bus%20Stand!5e0!3m2!1sen!2sin!4v1708000000000!5m2!1sen!2sin"
-        st.components.v1.html(f'<iframe src="{map_embed_url}" width="100%" height="250" style="border:0;" allowfullscreen="" loading="lazy"></iframe>', height=260)
-        st.link_button("🌐 Open in Google Maps", "https://maps.google.com/?cid=4692063799864552313&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNl")
     
-    with c2:
-        st.write("### 📞 Quick Connect")
-        st.write("9051965176 (Call Only)")
-        st.link_button("📞 Call Rishav Sir", "tel:+919051965176")
-        whatsapp_url = "https://wa.me/917044443309?text=Hello!%20I%20am%20interested%20in%20joining%20Wisdope%20Academy."
-        st.write("") # Add some spacing
-        st.write("7044443309 (Whatsapp Only)")
-        st.link_button("💬 WhatsApp Message", whatsapp_url)
-        st.write("**Email Us:**")
-        st.markdown('<div style="background-color:rgba(0,0,0,0.5); padding:10px; border-radius:5px;">📧 <a href="mailto:rishav9101999@gmail.com">rishav9101999@gmail.com</a></div>', unsafe_allow_html=True)
-
-    with c3:
-        st.header("Batch Timings")
-        st.write("🌅 **Morning:** 7:00 AM - 10:00 AM")
-        st.write("🌆 **Evening:** 5:00 PM - 10:00 PM")
-        
+    # ==========================================
+    #           1. VISIT US SECTION
+    # ==========================================
+    st.write("**Address:** 37, Dinu Lane, Kadamtala, Howrah-01")
+    st.write("**Landmark:** Opp. Kadamtala Bus Stand near S.B. Jewellers")
+    
+    # Responsive Google Map iframe
+    map_embed_url = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3684.348398031383!2d88.30456187515153!3d22.56608553322049!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a02794eb0f59967%3A0x111e1f2a32657579!2sKadamtala%20Bus%20Stand!5e0!3m2!1sen!2sin!4v1708000000000!5m2!1sen!2sin"
+    st.markdown(
+        f'''
+        <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+            <iframe src="{map_embed_url}" style="width: 100%; max-width: 800px; height: 350px; border:none; border-radius: 8px;" allowfullscreen="" loading="lazy"></iframe>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
+    
+    st.link_button("🌐 Open in Google Maps", "https://maps.google.com/?cid=4692063799864552313&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNl", use_container_width=True)
+    
     st.write("---")
-    st.write("### Follow Us On:")
-    s1, s2, s3, s4, s5, s6 = st.columns(6)
-    with s1: st.markdown("[![FB](https://img.icons8.com/color/48/facebook-new.png)](https://www.facebook.com/profile.php?id=61573780375951)")
-    with s2: st.markdown("[![IG](https://img.icons8.com/color/48/instagram-new.png)](https://www.instagram.com/rishavkarar.09/)")
-    with s3: st.markdown("[![Threads](https://img.icons8.com/ios-filled/48/ffffff/threads.png)](https://www.threads.net/@rishavkarar.09)")
-    with s4: st.markdown("[![WA](https://img.icons8.com/color/48/whatsapp.png)](https://wa.me/917044443309)")
-    with s5: st.markdown("[![LI](https://img.icons8.com/color/48/linkedin.png)](https://linkedin.com)")
-    with s6: st.markdown("[![YT](https://img.icons8.com/color/48/youtube-play.png)](https://youtube.com)")
+    
+    # ==========================================
+    #         2. QUICK CONNECT SECTION
+    # ==========================================
+    st.write("### 📞 Quick Connect")
+    
+    st.write("9051965176 (Call Only)")
+    st.link_button("📞 Call Rishav Sir", "tel:+919051965176", use_container_width=True)
+    
+    st.write("") # Add some spacing
+    
+    st.write("7044443309 (Whatsapp Only)")
+    whatsapp_url = "https://wa.me/917044443309?text=Hello!%20I%20am%20interested%20in%20joining%20Wisdope%20Academy."
+    st.link_button("💬 WhatsApp Message", whatsapp_url, use_container_width=True)
+    
+    st.write("**Email Us:**")
+    st.markdown('<div style="background-color:rgba(0,0,0,0.5); padding:10px; border-radius:5px;">📧 <a href="mailto:rishav9101999@gmail.com" style="color: white; text-decoration: none;">rishav9101999@gmail.com</a></div>', unsafe_allow_html=True)
 
+    st.write("---")
+    
+    # ==========================================
+    #          3. BATCH TIMINGS SECTION
+    # ==========================================
+    st.write("### ⏳ Batch Timings")
+    st.write("🌅 **Morning:** 7:00 AM - 10:00 AM")
+    st.write("🌆 **Evening:** 5:00 PM - 10:00 PM")
+    
+    st.write("---")
+    
+    # ==========================================
+    #     4. FOLLOW US ON (Forced Horizontal)
+    # ==========================================
+    st.write("### Follow Us On:")
+    
+    # Flexbox container to keep icons horizontal and evenly spaced
+    st.markdown(
+        """
+        <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+            <a href="https://www.facebook.com/profile.php?id=61573780375951" target="_blank">
+                <img src="https://img.icons8.com/color/48/facebook-new.png" width="48" style="transition: transform 0.2s;">
+            </a>
+            <a href="https://www.instagram.com/rishavkarar.09/" target="_blank">
+                <img src="https://img.icons8.com/color/48/instagram-new.png" width="48" style="transition: transform 0.2s;">
+            </a>
+            <a href="https://www.threads.net/@rishavkarar.09" target="_blank">
+                <img src="https://img.icons8.com/ios-filled/48/ffffff/threads.png" width="48" style="transition: transform 0.2s;">
+            </a>
+            <a href="https://wa.me/917044443309" target="_blank">
+                <img src="https://img.icons8.com/color/48/whatsapp.png" width="48" style="transition: transform 0.2s;">
+            </a>
+            <a href="https://linkedin.com" target="_blank">
+                <img src="https://img.icons8.com/color/48/linkedin.png" width="48" style="transition: transform 0.2s;">
+            </a>
+            <a href="https://youtube.com" target="_blank">
+                <img src="https://img.icons8.com/color/48/youtube-play.png" width="48" style="transition: transform 0.2s;">
+            </a>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
 # --- TAB 5: JOIN WISDOPE (REGISTRATION) ---
 with tab5:
     st.header("📝 Student Registration")
