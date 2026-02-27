@@ -126,27 +126,39 @@ with tab4:
     with s5: st.markdown("[![LI](https://img.icons8.com/color/48/linkedin.png)](https://linkedin.com)")
     with s6: st.markdown("[![YT](https://img.icons8.com/color/48/youtube-play.png)](https://youtube.com)")
 
+# --- TAB 5: JOIN WISDOPE (REGISTRATION) ---
 with tab5:
     st.header("📝 Student Registration")
     st.write("Ready to start your journey with Wisdope Academy? Please fill out the form below to secure your seat.")
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.write("""
-        **What happens next?**
-        1. After you submit the form, Rishav Sir will review your details.
-        2. You will receive a call or WhatsApp message within 24 hours.
-        3. We will discuss batch availability and the start date.
-        """)
-        
-        # Replace the URL below with your actual Google Form link
-        google_form_url = "https://forms.gle/ksZPZTy19kCnuPZg7"
-        
-        st.link_button("🚀 Open Registration Form", google_form_url, use_container_width=True)
-
+    
+    st.write("") # Adds a little breathing room
+    
+    st.write("""
+    **What happens next?**
+    1. After you submit the form, Rishav Sir will review your details.
+    2. You will receive a call or WhatsApp message within 24 hours.
+    3. We will discuss batch availability and the start date.
+    """)
+    
+    st.write("") # Adds a little breathing room before the button
+    
+    # Your actual Google Form link
+    google_form_url = "https://forms.gle/ksZPZTy19kCnuPZg7"
+    
+    # --- REGISTRATION BUTTON ---
+    # use_container_width=True makes it span nicely, type="primary" makes it stand out
+    st.link_button("🚀 Open Registration Form", google_form_url, type="primary", use_container_width=True)
+    
+    # --- THE DIVIDER ---
+    st.write("---")
+    
+    # --- NEED HELP SECTION (Centered for Desktop) ---
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.write("### Need Help?")
         st.write("If you face any issues while filling the form, contact us directly:")
-        st.link_button("💬 WhatsApp Support", whatsapp_url)
+        # Uses your existing whatsapp_url variable
+        st.link_button("💬 WhatsApp Support", whatsapp_url, use_container_width=True)
 # --- TAB 6: STUDENT PORTAL ---
 with tab6:
     st.header("🔐 Wisdope Portal")
