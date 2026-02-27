@@ -377,7 +377,7 @@ with tab6:
             st.markdown(
                 f'''
                 <div style="display: flex; justify-content: center;">
-                    <iframe src="{notice_url}" style="width: 100%; max-width: 1000px; height: 700px; border:none; border-radius: 8px;"></iframe>
+                    <iframe src="{notice_url}" style="width: 100%; max-width: 800px; height: 700px; border:none; border-radius: 8px;"></iframe>
                 </div>
                 ''',
                 unsafe_allow_html=True,
