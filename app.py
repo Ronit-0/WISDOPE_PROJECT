@@ -23,6 +23,14 @@ def set_custom_style():
             padding-top: 2rem;
         }}
 
+        /* 4. FIX: Force Primary (Yellow) Buttons to have Black Text */
+        [kind="primary"] p, 
+        [kind="primary"] span, 
+        [kind="primary"] div {{
+            color: black !important;
+            font-weight: 800 !important;
+        }}
+
         /* Existing background and font styles */
         .stApp {{
             background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
@@ -425,7 +433,7 @@ st.markdown(
         <a href="https://www.facebook.com/profile.php?id=61573780375951" target="_blank">
             <img src="https://img.icons8.com/color/48/facebook-new.png" width="40" style="transition: transform 0.2s;">
         </a>
-        <a href="https://www.instagram.com/rishavkarar.09/" target="_blank">
+        <a href="https://instagram.com/_u/rishavkarar.09/" target="_blank">
             <img src="https://img.icons8.com/color/48/instagram-new.png" width="40" style="transition: transform 0.2s;">
         </a>
         <a href="https://www.threads.net/@rishavkarar.09" target="_blank">
