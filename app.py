@@ -433,7 +433,7 @@ st.markdown(
         <a href="https://www.facebook.com/profile.php?id=61573780375951" target="_blank">
             <img src="https://img.icons8.com/color/48/facebook-new.png" width="40" style="transition: transform 0.2s;">
         </a>
-        <a href="https://www.instagram.com/rishavkarar.09/" target="_blank">
+        <a href="https://www.instagram.com/rishavkarar.09?igsh=MXFmazF1d2xzc3Bhcg==" target="_blank">
             <img src="https://img.icons8.com/color/48/instagram-new.png" width="40" style="transition: transform 0.2s;">
         </a>
         <a href="https://www.threads.net/@rishavkarar.09" target="_blank">
