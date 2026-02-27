@@ -205,12 +205,10 @@ with tab6:
         if st.session_state.user_class == "ADMIN":
             st.success("Welcome to the Admin Dashboard, Rishav Sir!")
             
-            # --- SHOW SUCCESS MESSAGE AFTER REFRESH ---
             if "publish_msg" in st.session_state:
                 st.success(st.session_state.publish_msg)
                 del st.session_state.publish_msg 
 
-            # --- THE MAGIC WIDGET RESETTER ---
             if "reset_key" not in st.session_state:
                 st.session_state.reset_key = 0
 
@@ -224,11 +222,27 @@ with tab6:
             except Exception:
                 df_mat = pd.DataFrame(columns=["Class", "Subject", "Link"])
 
+            # --- DYNAMICALLY BUILD ADMIN DROPDOWNS FROM DATABASE ---
+            default_classes = ["XII", "XI", "X", "IX", "VIII"]
+            db_classes = df_mat["Class"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
+            admin_class_options = []
+            for c in default_classes + db_classes:
+                if c and c not in admin_class_options:
+                    admin_class_options.append(c)
+            admin_class_options.append("+ Add New Class")
+
+            default_subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
+            db_subjects = df_mat["Subject"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
+            admin_subject_options = []
+            for s in default_subjects + db_subjects:
+                if s and s not in admin_subject_options:
+                    admin_subject_options.append(s)
+            admin_subject_options.append("+ Add New Subject")
+            # -------------------------------------------------------
+
             col1, col2 = st.columns(2)
             with col1:
-                class_options = ["XII", "XI", "X", "IX", "VIII", "+ Add New Class"]
-                # Notice the dynamic key attached here!
-                selected_class = st.selectbox("Target Class", class_options, key=f"c_drop_{st.session_state.reset_key}")
+                selected_class = st.selectbox("Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
                 
                 if selected_class == "+ Add New Class":
                     final_class = st.text_input("Enter New Class Name", key=f"c_text_{st.session_state.reset_key}").strip()
@@ -236,18 +250,15 @@ with tab6:
                     final_class = selected_class
                     
             with col2:
-                subject_options = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English", "+ Add New Subject"]
-                selected_subject = st.selectbox("Subject Name", subject_options, key=f"s_drop_{st.session_state.reset_key}")
+                selected_subject = st.selectbox("Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
                 
                 if selected_subject == "+ Add New Subject":
                     final_subject = st.text_input("Enter New Subject Name", key=f"s_text_{st.session_state.reset_key}").strip()
                 else:
                     final_subject = selected_subject
                 
-            # And the dynamic key attached to your sticky link box!
             raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)", key=f"link_{st.session_state.reset_key}").strip()
             
-            # --- FORMAT THE LINK ---
             if raw_link:
                 final_link = raw_link
                 if "/view" in raw_link:
@@ -257,7 +268,6 @@ with tab6:
             else:
                 final_link = "Pending"
 
-            # --- CHECK FOR EXISTING OVERWRITES ---
             already_exists = False
             needs_confirm = False
             
@@ -274,7 +284,6 @@ with tab6:
                 st.warning(f"⚠️ A material link already exists for {final_class} - {final_subject}.")
                 confirm_overwrite = st.checkbox("I confirm I want to overwrite the old link with this new one.")
 
-            # --- PUBLISH BUTTON ---
             if st.button("Publish Material to Students", type="primary"):
                 if final_class and final_subject:
                     if needs_confirm and not confirm_overwrite:
@@ -291,8 +300,6 @@ with tab6:
                                 conn.update(worksheet="Materials", data=updated_df)
                             
                             st.session_state.publish_msg = f"✅ Successfully published **{final_subject}** for **Class {final_class}**!"
-                            
-                            # THE MAGIC WIPE: We change the key, forcing all input boxes to instantly clear!
                             st.session_state.reset_key += 1 
                             st.rerun()
                             
