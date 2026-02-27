@@ -348,9 +348,16 @@ with tab6:
                         embed_url = str(subject_match.iloc[0]["Link"]).strip()
                         if embed_url.startswith("http"):
                             st.caption("These materials are view-only and cannot be downloaded.")
-                            # --- RESPONSIVE PDF IFRAME ---
+                            
+                            # --- RESPONSIVE PDF FIX ---
+                            # display: flex + justify-content centers it on desktop
+                            # max-width: 1000px keeps it from getting too wide
                             st.markdown(
-                                f'<iframe src="{embed_url}" width="100%" height="700" style="border:none; border-radius: 8px;"></iframe>',
+                                f'''
+                                <div style="display: flex; justify-content: center;">
+                                    <iframe src="{embed_url}" style="width: 100%; max-width: 1000px; height: 700px; border:none; border-radius: 8px;"></iframe>
+                                </div>
+                                ''',
                                 unsafe_allow_html=True,
                             )
                         else:
@@ -365,10 +372,14 @@ with tab6:
             st.subheader("📢 Notice Board")
             st.caption("Latest updates and announcements from Rishav Sir.")
             
-            # --- RESPONSIVE NOTICE BOARD IFRAME ---
+            # --- RESPONSIVE NOTICE BOARD FIX ---
             notice_url = st.secrets["admin"]["notice_board"]
             st.markdown(
-                f'<iframe src="{notice_url}" width="100%" height="700" style="border:none; border-radius: 8px;"></iframe>',
+                f'''
+                <div style="display: flex; justify-content: center;">
+                    <iframe src="{notice_url}" style="width: 100%; max-width: 1000px; height: 700px; border:none; border-radius: 8px;"></iframe>
+                </div>
+                ''',
                 unsafe_allow_html=True,
             )
             
