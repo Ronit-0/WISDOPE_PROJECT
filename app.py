@@ -140,40 +140,6 @@ with tab4:
     st.write("### ⏳ Batch Timings")
     st.write("🌅 **Morning:** 7:00 AM - 10:00 AM")
     st.write("🌆 **Evening:** 5:00 PM - 10:00 PM")
-    
-    st.write("---")
-    
-    # ==========================================
-    #     4. FOLLOW US ON (Forced Horizontal)
-    # ==========================================
-    st.write("### Follow Us On:")
-    
-    # Flexbox container to keep icons horizontal and evenly spaced
-    st.markdown(
-        """
-        <div style="display: flex; flex-wrap: wrap; gap: 15px;">
-            <a href="https://www.facebook.com/profile.php?id=61573780375951" target="_blank">
-                <img src="https://img.icons8.com/color/48/facebook-new.png" width="48" style="transition: transform 0.2s;">
-            </a>
-            <a href="https://www.instagram.com/rishavkarar.09/" target="_blank">
-                <img src="https://img.icons8.com/color/48/instagram-new.png" width="48" style="transition: transform 0.2s;">
-            </a>
-            <a href="https://www.threads.net/@rishavkarar.09" target="_blank">
-                <img src="https://img.icons8.com/ios-filled/48/ffffff/threads.png" width="48" style="transition: transform 0.2s;">
-            </a>
-            <a href="https://wa.me/917044443309" target="_blank">
-                <img src="https://img.icons8.com/color/48/whatsapp.png" width="48" style="transition: transform 0.2s;">
-            </a>
-            <a href="https://linkedin.com" target="_blank">
-                <img src="https://img.icons8.com/color/48/linkedin.png" width="48" style="transition: transform 0.2s;">
-            </a>
-            <a href="https://youtube.com" target="_blank">
-                <img src="https://img.icons8.com/color/48/youtube-play.png" width="48" style="transition: transform 0.2s;">
-            </a>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
 # --- TAB 5: JOIN WISDOPE (REGISTRATION) ---
 with tab5:
     st.header("📝 Student Registration")
