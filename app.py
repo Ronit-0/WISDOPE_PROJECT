@@ -210,7 +210,6 @@ with tab6:
             
             col1, col2 = st.columns(2)
             
-            # --- 1. DYNAMIC CLASS DROPDOWN ---
             with col1:
                 class_options = ["XII", "XI", "X", "IX", "VIII", "+ Add New Class"]
                 selected_class = st.selectbox("Target Class", class_options)
@@ -220,7 +219,6 @@ with tab6:
                 else:
                     final_class = selected_class
                     
-            # --- 2. DYNAMIC SUBJECT DROPDOWN ---
             with col2:
                 subject_options = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English", "+ Add New Subject"]
                 selected_subject = st.selectbox("Subject Name", subject_options)
@@ -230,17 +228,21 @@ with tab6:
                 else:
                     final_subject = selected_subject
                 
-            # --- 3. LINK INPUT & AUTOMATIC CONVERTER ---
-            raw_link = st.text_input("Google Drive Share Link (Standard or Preview)").strip()
+            # --- MADE THE LINK OPTIONAL ---
+            raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)").strip()
             
-            final_link = raw_link
-            if "/view" in raw_link:
-                final_link = raw_link.split("/view")[0] + "/preview"
-            elif "/edit" in raw_link:
-                final_link = raw_link.split("/edit")[0] + "/preview"
+            if raw_link:
+                final_link = raw_link
+                if "/view" in raw_link:
+                    final_link = raw_link.split("/view")[0] + "/preview"
+                elif "/edit" in raw_link:
+                    final_link = raw_link.split("/edit")[0] + "/preview"
+            else:
+                final_link = "Pending" # Saves 'Pending' to the database instead of a link
 
             if st.button("Publish Material to Students", type="primary"):
-                if final_class and final_subject and final_link:
+                # Notice we only check for final_class and final_subject now!
+                if final_class and final_subject: 
                     try:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
@@ -252,11 +254,14 @@ with tab6:
                         conn.update(worksheet="Materials", data=updated_df)
                         
                         st.success(f"✅ Successfully published **{final_subject}** for **Class {final_class}**!")
-                        st.caption(f"Automated Link Stored: {final_link}")
+                        if final_link == "Pending":
+                            st.info("Status marked as 'Pending'. Students will see a 'Coming Soon' message.")
+                        else:
+                            st.caption(f"Automated Link Stored: {final_link}")
                     except Exception as e:
                         st.error(f"Failed to publish: {str(e)}")
                 else:
-                    st.warning("Please fill in all fields before publishing.")
+                    st.warning("Please enter a Class and Subject before publishing.")
             
             st.write("---")
             if st.button("Log Out"):
@@ -289,14 +294,16 @@ with tab6:
                     
                     if selected_subject_student:
                         st.write(f"### 📖 {selected_subject_student} Materials")
-                        st.caption("These materials are view-only and cannot be downloaded.")
                         
                         embed_url = student_materials[student_materials["Subject"] == selected_subject_student].iloc[0]["Link"]
                         
+                        # --- THE NEW "COMING SOON" LOGIC ---
                         if str(embed_url).startswith("http"):
+                            st.caption("These materials are view-only and cannot be downloaded.")
                             components.iframe(embed_url, width=1000, height=700)
                         else:
-                            st.info("Link is broken or missing.")
+                            # If the link is "Pending" or blank, show this nice message instead!
+                            st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
                 else:
                     st.info(f"Study materials for Class {current_class} are currently being compiled.")
             
