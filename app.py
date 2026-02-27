@@ -208,46 +208,53 @@ with tab6:
             
             import pandas as pd
             
-            # --- 1. DYNAMIC CLASS DROPDOWN ---
-            class_options = ["XII", "XI", "X", "IX", "VIII", "+ Add New Class"]
-            selected_option = st.selectbox("Target Class", class_options)
+            col1, col2 = st.columns(2)
             
-            # If they select "Add New Class", a text box magically appears!
-            if selected_option == "+ Add New Class":
-                final_class = st.text_input("Enter New Class Name (e.g., VI, Target Batch)").strip()
-            else:
-                final_class = selected_option
+            # --- 1. DYNAMIC CLASS DROPDOWN ---
+            with col1:
+                class_options = ["XII", "XI", "X", "IX", "VIII", "+ Add New Class"]
+                selected_class = st.selectbox("Target Class", class_options)
                 
-            # --- 2. SUBJECT & LINK INPUTS ---
-            add_subject = st.text_input("Subject Name (e.g., Mathematics, Botany)").strip()
+                if selected_class == "+ Add New Class":
+                    final_class = st.text_input("Enter New Class Name").strip()
+                else:
+                    final_class = selected_class
+                    
+            # --- 2. DYNAMIC SUBJECT DROPDOWN ---
+            with col2:
+                subject_options = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English", "+ Add New Subject"]
+                selected_subject = st.selectbox("Subject Name", subject_options)
+                
+                if selected_subject == "+ Add New Subject":
+                    final_subject = st.text_input("Enter New Subject Name").strip()
+                else:
+                    final_subject = selected_subject
+                
+            # --- 3. LINK INPUT & AUTOMATIC CONVERTER ---
             raw_link = st.text_input("Google Drive Share Link (Standard or Preview)").strip()
             
-            # --- THE MAGIC LINK CONVERTER ---
-            # Automatically chops off /view or /edit and forces /preview
             final_link = raw_link
             if "/view" in raw_link:
                 final_link = raw_link.split("/view")[0] + "/preview"
             elif "/edit" in raw_link:
                 final_link = raw_link.split("/edit")[0] + "/preview"
 
-            # Publish Button (outside of a form to allow the dynamic dropdown to work)
             if st.button("Publish Material to Students", type="primary"):
-                # Safety Validation
-                if final_class and add_subject and final_link:
+                if final_class and final_subject and final_link:
                     try:
                         from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         
                         df_mat = conn.read(worksheet="Materials")
-                        new_data = pd.DataFrame([{"Class": final_class, "Subject": add_subject, "Link": final_link}])
+                        new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
                         
                         updated_df = pd.concat([df_mat, new_data], ignore_index=True)
                         conn.update(worksheet="Materials", data=updated_df)
                         
-                        st.success(f"✅ Successfully published **{add_subject}** for **Class {final_class}**!")
+                        st.success(f"✅ Successfully published **{final_subject}** for **Class {final_class}**!")
                         st.caption(f"Automated Link Stored: {final_link}")
                     except Exception as e:
-                        st.error(f"Failed to publish: Make sure the 'Materials' tab exists in your Google Sheet! Error: {str(e)}")
+                        st.error(f"Failed to publish: {str(e)}")
                 else:
                     st.warning("Please fill in all fields before publishing.")
             
@@ -278,13 +285,13 @@ with tab6:
                 
                 if not student_materials.empty:
                     available_subjects = student_materials["Subject"].tolist()
-                    selected_subject = st.selectbox("Choose a subject:", available_subjects)
+                    selected_subject_student = st.selectbox("Choose a subject:", available_subjects)
                     
-                    if selected_subject:
-                        st.write(f"### 📖 {selected_subject} Materials")
+                    if selected_subject_student:
+                        st.write(f"### 📖 {selected_subject_student} Materials")
                         st.caption("These materials are view-only and cannot be downloaded.")
                         
-                        embed_url = student_materials[student_materials["Subject"] == selected_subject].iloc[0]["Link"]
+                        embed_url = student_materials[student_materials["Subject"] == selected_subject_student].iloc[0]["Link"]
                         
                         if str(embed_url).startswith("http"):
                             components.iframe(embed_url, width=1000, height=700)
