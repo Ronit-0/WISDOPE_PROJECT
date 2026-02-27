@@ -222,7 +222,6 @@ with tab6:
             except Exception:
                 df_mat = pd.DataFrame(columns=["Class", "Subject", "Link"])
 
-            # --- DYNAMICALLY BUILD ADMIN DROPDOWNS FROM DATABASE ---
             default_classes = ["XII", "XI", "X", "IX", "VIII"]
             db_classes = df_mat["Class"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
             admin_class_options = []
@@ -238,7 +237,6 @@ with tab6:
                 if s and s not in admin_subject_options:
                     admin_subject_options.append(s)
             admin_subject_options.append("+ Add New Subject")
-            # -------------------------------------------------------
 
             col1, col2 = st.columns(2)
             with col1:
@@ -322,7 +320,6 @@ with tab6:
             st.write(f"**Batch:** {current_class}")
             st.write("---")
             
-            import streamlit.components.v1 as components
             st.subheader("📚 Select Your Subject")
             
             try:
@@ -351,7 +348,11 @@ with tab6:
                         embed_url = str(subject_match.iloc[0]["Link"]).strip()
                         if embed_url.startswith("http"):
                             st.caption("These materials are view-only and cannot be downloaded.")
-                            components.iframe(embed_url, width=1000, height=700)
+                            # --- RESPONSIVE PDF IFRAME ---
+                            st.markdown(
+                                f'<iframe src="{embed_url}" width="100%" height="700" style="border:none; border-radius: 8px;"></iframe>',
+                                unsafe_allow_html=True,
+                            )
                         else:
                             st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
                     else:
@@ -363,7 +364,13 @@ with tab6:
             st.write("---")
             st.subheader("📢 Notice Board")
             st.caption("Latest updates and announcements from Rishav Sir.")
-            components.iframe(st.secrets["admin"]["notice_board"], width=1000, height=700, scrolling=True)
+            
+            # --- RESPONSIVE NOTICE BOARD IFRAME ---
+            notice_url = st.secrets["admin"]["notice_board"]
+            st.markdown(
+                f'<iframe src="{notice_url}" width="100%" height="700" style="border:none; border-radius: 8px;"></iframe>',
+                unsafe_allow_html=True,
+            )
             
             st.write("---")
             if st.button("Log Out"):
