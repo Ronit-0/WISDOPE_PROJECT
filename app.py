@@ -176,7 +176,8 @@ with tab6:
                         try:
                             from streamlit_gsheets import GSheetsConnection
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            df = conn.read(worksheet="Registration")
+                            # ttl=0 forces live data fetch!
+                            df = conn.read(worksheet="Registration", ttl=0) 
                             
                             df.columns = df.columns.str.strip()
                             df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
@@ -204,12 +205,24 @@ with tab6:
         # ==========================================
         if st.session_state.user_class == "ADMIN":
             st.success("Welcome to the Admin Dashboard, Rishav Sir!")
+            
+            # --- SHOW SUCCESS MESSAGE AFTER REFRESH ---
+            if "publish_msg" in st.session_state:
+                st.success(st.session_state.publish_msg)
+                del st.session_state.publish_msg # Delete it so it only shows once!
+
             st.write("Add new subjects and PDF/Video links to the database here.")
             
             import pandas as pd
-            
+            try:
+                from streamlit_gsheets import GSheetsConnection
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                # Fetch live DB to check for overwrites
+                df_mat = conn.read(worksheet="Materials", ttl=0) 
+            except Exception:
+                df_mat = pd.DataFrame(columns=["Class", "Subject", "Link"])
+
             col1, col2 = st.columns(2)
-            
             with col1:
                 class_options = ["XII", "XI", "X", "IX", "VIII", "+ Add New Class"]
                 selected_class = st.selectbox("Target Class", class_options)
@@ -228,9 +241,9 @@ with tab6:
                 else:
                     final_subject = selected_subject
                 
-            # --- MADE THE LINK OPTIONAL ---
             raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)").strip()
             
+            # --- FORMAT THE LINK ---
             if raw_link:
                 final_link = raw_link
                 if "/view" in raw_link:
@@ -238,28 +251,49 @@ with tab6:
                 elif "/edit" in raw_link:
                     final_link = raw_link.split("/edit")[0] + "/preview"
             else:
-                final_link = "Pending" # Saves 'Pending' to the database instead of a link
+                final_link = "Pending"
 
+            # --- CHECK FOR EXISTING OVERWRITES ---
+            already_exists = False
+            needs_confirm = False
+            
+            if final_class and final_subject and not df_mat.empty:
+                mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject)
+                if mask.any():
+                    already_exists = True
+                    existing_link = str(df_mat.loc[mask, "Link"].iloc[0]).strip()
+                    if existing_link.startswith("http"):
+                        needs_confirm = True
+
+            confirm_overwrite = True
+            if needs_confirm:
+                st.warning(f"⚠️ A material link already exists for {final_class} - {final_subject}.")
+                confirm_overwrite = st.checkbox("I confirm I want to overwrite the old link with this new one.")
+
+            # --- PUBLISH BUTTON ---
             if st.button("Publish Material to Students", type="primary"):
-                # Notice we only check for final_class and final_subject now!
-                if final_class and final_subject: 
-                    try:
-                        from streamlit_gsheets import GSheetsConnection
-                        conn = st.connection("gsheets", type=GSheetsConnection)
-                        
-                        df_mat = conn.read(worksheet="Materials")
-                        new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
-                        
-                        updated_df = pd.concat([df_mat, new_data], ignore_index=True)
-                        conn.update(worksheet="Materials", data=updated_df)
-                        
-                        st.success(f"✅ Successfully published **{final_subject}** for **Class {final_class}**!")
-                        if final_link == "Pending":
-                            st.info("Status marked as 'Pending'. Students will see a 'Coming Soon' message.")
-                        else:
-                            st.caption(f"Automated Link Stored: {final_link}")
-                    except Exception as e:
-                        st.error(f"Failed to publish: {str(e)}")
+                if final_class and final_subject:
+                    if needs_confirm and not confirm_overwrite:
+                        st.error("Please check the confirmation box above to safely overwrite the existing material.")
+                    else:
+                        try:
+                            if already_exists:
+                                # Update the existing row instead of adding a duplicate!
+                                idx = df_mat[mask].index[0]
+                                df_mat.at[idx, "Link"] = final_link
+                                conn.update(worksheet="Materials", data=df_mat)
+                            else:
+                                # Add completely new row
+                                new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
+                                updated_df = pd.concat([df_mat, new_data], ignore_index=True)
+                                conn.update(worksheet="Materials", data=updated_df)
+                            
+                            # Save success message in memory and force a page refresh to clear text boxes!
+                            st.session_state.publish_msg = f"✅ Successfully published **{final_subject}** for **Class {final_class}**!"
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"Failed to publish: {str(e)}")
                 else:
                     st.warning("Please enter a Class and Subject before publishing.")
             
@@ -278,34 +312,42 @@ with tab6:
             st.write("---")
             
             import streamlit.components.v1 as components
-            
             st.subheader("📚 Select Your Subject")
             
             try:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 
-                materials_df = conn.read(worksheet="Materials")
-                student_materials = materials_df[materials_df["Class"].astype(str).str.strip() == str(current_class).strip()]
+                # ttl=0 forces live fetch! Fixes the "Compiled" bug.
+                materials_df = conn.read(worksheet="Materials", ttl=0) 
                 
-                if not student_materials.empty:
-                    available_subjects = student_materials["Subject"].tolist()
-                    selected_subject_student = st.selectbox("Choose a subject:", available_subjects)
+                # Combine standard subjects with any custom subjects from the DB
+                default_subs = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
+                class_db = materials_df[materials_df["Class"].astype(str).str.strip() == str(current_class).strip()]
+                db_subs = class_db["Subject"].tolist() if not class_db.empty else []
+                
+                all_subs = []
+                for sub in default_subs + db_subs:
+                    if sub not in all_subs:
+                        all_subs.append(sub)
+                
+                selected_subject_student = st.selectbox("Choose a subject:", all_subs)
+                
+                if selected_subject_student:
+                    st.write(f"### 📖 {selected_subject_student} Materials")
                     
-                    if selected_subject_student:
-                        st.write(f"### 📖 {selected_subject_student} Materials")
-                        
-                        embed_url = student_materials[student_materials["Subject"] == selected_subject_student].iloc[0]["Link"]
-                        
-                        # --- THE NEW "COMING SOON" LOGIC ---
-                        if str(embed_url).startswith("http"):
+                    # Search the live DB for the selected subject
+                    subject_match = class_db[class_db["Subject"].astype(str).str.strip() == selected_subject_student]
+                    
+                    if not subject_match.empty:
+                        embed_url = str(subject_match.iloc[0]["Link"]).strip()
+                        if embed_url.startswith("http"):
                             st.caption("These materials are view-only and cannot be downloaded.")
                             components.iframe(embed_url, width=1000, height=700)
                         else:
-                            # If the link is "Pending" or blank, show this nice message instead!
                             st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
-                else:
-                    st.info(f"Study materials for Class {current_class} are currently being compiled.")
+                    else:
+                        st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
             
             except Exception as e:
                 st.error("Could not load study materials database. Please contact Rishav Sir.")
