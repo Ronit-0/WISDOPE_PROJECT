@@ -451,8 +451,6 @@ st.divider()
 # ==========================================
 #               GLOBAL FOOTER
 # ==========================================
-st.write("---")
-
 # Shrunk icons to 40px, reduced gap to 10px, and forced 'nowrap' so it stays on one line!
 st.markdown(
     """
@@ -479,7 +477,7 @@ st.markdown(
     """, 
     unsafe_allow_html=True
 )
-
+st.write("---")
 # If your copyright text isn't centered yet, you can replace it with this to match!
 st.markdown(
     "<p style='text-align: center; color: gray; font-size: 14px;'>© 2026 Wisdope Academy | Associated with Bose Informatics</p>", 
