@@ -176,7 +176,6 @@ with tab6:
                         try:
                             from streamlit_gsheets import GSheetsConnection
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            # ttl=0 forces live data fetch!
                             df = conn.read(worksheet="Registration", ttl=0) 
                             
                             df.columns = df.columns.str.strip()
@@ -209,7 +208,11 @@ with tab6:
             # --- SHOW SUCCESS MESSAGE AFTER REFRESH ---
             if "publish_msg" in st.session_state:
                 st.success(st.session_state.publish_msg)
-                del st.session_state.publish_msg # Delete it so it only shows once!
+                del st.session_state.publish_msg 
+
+            # --- THE MAGIC WIDGET RESETTER ---
+            if "reset_key" not in st.session_state:
+                st.session_state.reset_key = 0
 
             st.write("Add new subjects and PDF/Video links to the database here.")
             
@@ -217,7 +220,6 @@ with tab6:
             try:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                # Fetch live DB to check for overwrites
                 df_mat = conn.read(worksheet="Materials", ttl=0) 
             except Exception:
                 df_mat = pd.DataFrame(columns=["Class", "Subject", "Link"])
@@ -225,23 +227,25 @@ with tab6:
             col1, col2 = st.columns(2)
             with col1:
                 class_options = ["XII", "XI", "X", "IX", "VIII", "+ Add New Class"]
-                selected_class = st.selectbox("Target Class", class_options)
+                # Notice the dynamic key attached here!
+                selected_class = st.selectbox("Target Class", class_options, key=f"c_drop_{st.session_state.reset_key}")
                 
                 if selected_class == "+ Add New Class":
-                    final_class = st.text_input("Enter New Class Name").strip()
+                    final_class = st.text_input("Enter New Class Name", key=f"c_text_{st.session_state.reset_key}").strip()
                 else:
                     final_class = selected_class
                     
             with col2:
                 subject_options = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English", "+ Add New Subject"]
-                selected_subject = st.selectbox("Subject Name", subject_options)
+                selected_subject = st.selectbox("Subject Name", subject_options, key=f"s_drop_{st.session_state.reset_key}")
                 
                 if selected_subject == "+ Add New Subject":
-                    final_subject = st.text_input("Enter New Subject Name").strip()
+                    final_subject = st.text_input("Enter New Subject Name", key=f"s_text_{st.session_state.reset_key}").strip()
                 else:
                     final_subject = selected_subject
                 
-            raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)").strip()
+            # And the dynamic key attached to your sticky link box!
+            raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)", key=f"link_{st.session_state.reset_key}").strip()
             
             # --- FORMAT THE LINK ---
             if raw_link:
@@ -278,18 +282,18 @@ with tab6:
                     else:
                         try:
                             if already_exists:
-                                # Update the existing row instead of adding a duplicate!
                                 idx = df_mat[mask].index[0]
                                 df_mat.at[idx, "Link"] = final_link
                                 conn.update(worksheet="Materials", data=df_mat)
                             else:
-                                # Add completely new row
                                 new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
                                 updated_df = pd.concat([df_mat, new_data], ignore_index=True)
                                 conn.update(worksheet="Materials", data=updated_df)
                             
-                            # Save success message in memory and force a page refresh to clear text boxes!
                             st.session_state.publish_msg = f"✅ Successfully published **{final_subject}** for **Class {final_class}**!"
+                            
+                            # THE MAGIC WIPE: We change the key, forcing all input boxes to instantly clear!
+                            st.session_state.reset_key += 1 
                             st.rerun()
                             
                         except Exception as e:
@@ -318,10 +322,8 @@ with tab6:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 
-                # ttl=0 forces live fetch! Fixes the "Compiled" bug.
                 materials_df = conn.read(worksheet="Materials", ttl=0) 
                 
-                # Combine standard subjects with any custom subjects from the DB
                 default_subs = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
                 class_db = materials_df[materials_df["Class"].astype(str).str.strip() == str(current_class).strip()]
                 db_subs = class_db["Subject"].tolist() if not class_db.empty else []
@@ -336,7 +338,6 @@ with tab6:
                 if selected_subject_student:
                     st.write(f"### 📖 {selected_subject_student} Materials")
                     
-                    # Search the live DB for the selected subject
                     subject_match = class_db[class_db["Subject"].astype(str).str.strip() == selected_subject_student]
                     
                     if not subject_match.empty:
