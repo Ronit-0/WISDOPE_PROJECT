@@ -448,4 +448,40 @@ with tab6:
                 st.session_state.logged_in = False
                 st.rerun()
 st.divider()
-st.caption("© 2026 Wisdope Academy | Associated with Bose Informatics")
+# ==========================================
+#               GLOBAL FOOTER
+# ==========================================
+st.write("---")
+
+# Shrunk icons to 40px, reduced gap to 10px, and forced 'nowrap' so it stays on one line!
+st.markdown(
+    """
+    <div style="display: flex; justify-content: center; flex-wrap: nowrap; gap: 10px; margin-bottom: 20px;">
+        <a href="https://www.facebook.com/profile.php?id=61573780375951" target="_blank">
+            <img src="https://img.icons8.com/color/48/facebook-new.png" width="40" style="transition: transform 0.2s;">
+        </a>
+        <a href="https://www.instagram.com/rishavkarar.09/" target="_blank">
+            <img src="https://img.icons8.com/color/48/instagram-new.png" width="40" style="transition: transform 0.2s;">
+        </a>
+        <a href="https://www.threads.net/@rishavkarar.09" target="_blank">
+            <img src="https://img.icons8.com/ios-filled/48/ffffff/threads.png" width="40" style="transition: transform 0.2s;">
+        </a>
+        <a href="https://wa.me/917044443309" target="_blank">
+            <img src="https://img.icons8.com/color/48/whatsapp.png" width="40" style="transition: transform 0.2s;">
+        </a>
+        <a href="https://linkedin.com" target="_blank">
+            <img src="https://img.icons8.com/color/48/linkedin.png" width="40" style="transition: transform 0.2s;">
+        </a>
+        <a href="https://youtube.com" target="_blank">
+            <img src="https://img.icons8.com/color/48/youtube-play.png" width="40" style="transition: transform 0.2s;">
+        </a>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+# If your copyright text isn't centered yet, you can replace it with this to match!
+st.markdown(
+    "<p style='text-align: center; color: gray; font-size: 14px;'>© 2026 Wisdope Academy | Associated with Bose Informatics</p>", 
+    unsafe_allow_html=True
+)
