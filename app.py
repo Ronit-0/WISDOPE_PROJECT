@@ -93,7 +93,7 @@ with tab2:
         st.write("**Subjects Offered:**")
         st.write("* **Classes VIII-X:** Physics, Chemistry, and Biology (Theory and Practical)")
         st.write("* **Classes XI-XII:** Chemistry and Biology (Theory and Practical), and Physics (Practical only)")
-
+# --- TAB 3: GALLERY ---
 with tab3:
     st.header("📸 Some Glimpses of Our Coaching Institute")
     st.write("---")
@@ -101,54 +101,90 @@ with tab3:
     try:
         from streamlit_gsheets import GSheetsConnection
         import pandas as pd
+        import streamlit.components.v1 as components
         
-        # 1. Connect to the Google Sheet and read the Gallery tab
+        # 1. Read images from the database
         conn = st.connection("gsheets", type=GSheetsConnection)
         gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
-        
-        # 2. Clean the data to get a list of valid URLs
         gallery_images = gallery_df["Image_URL"].dropna().tolist()
         
         if len(gallery_images) == 0:
             st.info("No photos uploaded yet. Check back soon!")
         else:
-            # 3. Setup the Memory for the slideshow
-            if "gallery_index" not in st.session_state:
-                st.session_state.gallery_index = 0
-                
-            # 4. Create the Layout: [ < ]  [ Image ]  [ > ]
-            col_left, col_img, col_right = st.columns([1, 6, 1], vertical_alignment="center")
+            # 2. Package the images into HTML format
+            slides_html = ""
+            for i, img_url in enumerate(gallery_images):
+                slides_html += f'''
+                <div class="mySlides fade">
+                    <img src="{img_url}" style="width:100%; max-height: 500px; object-fit: contain; border-radius: 8px;">
+                    <div class="numbertext" style="color: white; padding: 8px; position: absolute; top: 0; background: rgba(0,0,0,0.5); border-radius: 8px;">{i+1} / {len(gallery_images)}</div>
+                </div>
+                '''
             
-            with col_left:
-                if st.button("◀", key="prev_btn", use_container_width=True):
-                    st.session_state.gallery_index = (st.session_state.gallery_index - 1) % len(gallery_images)
-                    st.rerun()
-                    
-            with col_img:
-                # Failsafe: if an image was deleted and index is out of bounds
-                if st.session_state.gallery_index >= len(gallery_images):
-                    st.session_state.gallery_index = 0
-                    
-                current_image = gallery_images[st.session_state.gallery_index]
-                st.image(
-                    current_image, 
-                    use_container_width=True, 
-                    caption=f"Image {st.session_state.gallery_index + 1} of {len(gallery_images)}"
-                )
-                
-            with col_right:
-                if st.button("▶", key="next_btn", use_container_width=True):
-                    st.session_state.gallery_index = (st.session_state.gallery_index + 1) % len(gallery_images)
-                    st.rerun()
-                    
+            # 3. The Smart HTML/JS Carousel Code
+            full_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+            * {{box-sizing: border-box; font-family: sans-serif;}}
+            body {{ margin: 0; background-color: transparent; }}
+            .slideshow-container {{ max-width: 1000px; position: relative; margin: auto; }}
+            .mySlides {{ display: none; text-align: center; }}
+            .prev, .next {{ cursor: pointer; position: absolute; top: 50%; width: auto; padding: 16px; margin-top: -22px; color: white; font-weight: bold; font-size: 24px; transition: 0.3s ease; border-radius: 0 3px 3px 0; user-select: none; background-color: rgba(0,0,0,0.6); text-decoration: none;}}
+            .next {{ right: 0; border-radius: 3px 0 0 3px; }}
+            .prev {{ left: 0; }}
+            .prev:hover, .next:hover {{ background-color: rgba(0,0,0,0.9); }}
+            .fade {{ animation-name: fade; animation-duration: 1.5s; }}
+            @keyframes fade {{ from {{opacity: .4}} to {{opacity: 1}} }}
+            </style>
+            </head>
+            <body>
+            
+            <div class="slideshow-container">
+              {slides_html}
+              <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+              <a class="next" onclick="plusSlides(1)">&#10095;</a>
+            </div>
+            
+            <script>
+            let slideIndex = 1;
+            let timer;
+            showSlides(slideIndex);
+            
+            function plusSlides(n) {{
+              clearTimeout(timer); // Reset the timer if user manually clicks
+              showSlides(slideIndex += n);
+            }}
+            
+            function showSlides(n) {{
+              let i;
+              let slides = document.getElementsByClassName("mySlides");
+              if (!slides.length) return;
+              if (n > slides.length) {{slideIndex = 1}}    
+              if (n < 1) {{slideIndex = slides.length}}
+              for (i = 0; i < slides.length; i++) {{
+                slides[i].style.display = "none";  
+              }}
+              slides[slideIndex-1].style.display = "block";  
+              timer = setTimeout(() => plusSlides(1), 15000); // Auto-slide every 15 seconds
+            }}
+            </script>
+            
+            </body>
+            </html>
+            """
+            
+            # 4. Render the carousel into Streamlit
+            components.html(full_html, height=550)
+            
     except Exception as e:
-        # Fallback to the old hardcoded image if the database hasn't synced yet
         img_path = "images/IMG_8148.PNG"
         import os
         from PIL import Image
         if os.path.exists(img_path):
             st.image(Image.open(img_path), caption="Students during theory and practical session", use_container_width=True)
-            
+
 # --- TAB 4: CONTACT & LOCATION ---
 with tab4:
     st.header("📍 Visit or Contact Us")
