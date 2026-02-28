@@ -1,6 +1,11 @@
 import streamlit as st
 import os
 from PIL import Image
+import requests
+import base64
+import pandas as pd
+from streamlit_gsheets import GSheetsConnection
+
 
 # 1. Force Dark Mode & Page Config
 st.set_page_config(page_title="Wisdope Academy", page_icon="🔬", layout="wide")
@@ -90,14 +95,60 @@ with tab2:
         st.write("* **Classes XI-XII:** Chemistry and Biology (Theory and Practical), and Physics (Practical only)")
 
 with tab3:
-    st.header("Some Glimpses of Our Coaching Institute")
-    img_path = "images/IMG_8148.PNG"
-    if os.path.exists(img_path):
-        img = Image.open(img_path)
-        st.image(img, caption="Students during theory and practical session", use_container_width=True)
-    else:
-        st.error("Error: Image not found.")
-
+    st.header("📸 Some Glimpses of Our Coaching Institute")
+    st.write("---")
+    
+    try:
+        from streamlit_gsheets import GSheetsConnection
+        import pandas as pd
+        
+        # 1. Connect to the Google Sheet and read the Gallery tab
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
+        
+        # 2. Clean the data to get a list of valid URLs
+        gallery_images = gallery_df["Image_URL"].dropna().tolist()
+        
+        if len(gallery_images) == 0:
+            st.info("No photos uploaded yet. Check back soon!")
+        else:
+            # 3. Setup the Memory for the slideshow
+            if "gallery_index" not in st.session_state:
+                st.session_state.gallery_index = 0
+                
+            # 4. Create the Layout: [ < ]  [ Image ]  [ > ]
+            col_left, col_img, col_right = st.columns([1, 6, 1], vertical_alignment="center")
+            
+            with col_left:
+                if st.button("◀", key="prev_btn", use_container_width=True):
+                    st.session_state.gallery_index = (st.session_state.gallery_index - 1) % len(gallery_images)
+                    st.rerun()
+                    
+            with col_img:
+                # Failsafe: if an image was deleted and index is out of bounds
+                if st.session_state.gallery_index >= len(gallery_images):
+                    st.session_state.gallery_index = 0
+                    
+                current_image = gallery_images[st.session_state.gallery_index]
+                st.image(
+                    current_image, 
+                    use_container_width=True, 
+                    caption=f"Image {st.session_state.gallery_index + 1} of {len(gallery_images)}"
+                )
+                
+            with col_right:
+                if st.button("▶", key="next_btn", use_container_width=True):
+                    st.session_state.gallery_index = (st.session_state.gallery_index + 1) % len(gallery_images)
+                    st.rerun()
+                    
+    except Exception as e:
+        # Fallback to the old hardcoded image if the database hasn't synced yet
+        img_path = "images/IMG_8148.PNG"
+        import os
+        from PIL import Image
+        if os.path.exists(img_path):
+            st.image(Image.open(img_path), caption="Students during theory and practical session", use_container_width=True)
+            
 # --- TAB 4: CONTACT & LOCATION ---
 with tab4:
     st.header("📍 Visit or Contact Us")
