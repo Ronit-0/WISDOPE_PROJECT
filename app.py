@@ -232,6 +232,7 @@ with tab5:
         st.write("If you face any issues while filling the form, contact us directly:")
         # Uses your existing whatsapp_url variable
         st.link_button("💬 WhatsApp Support", whatsapp_url, use_container_width=True)
+                        
 # --- TAB 6: STUDENT PORTAL ---
 with tab6:
     st.header("🔐 Wisdope Portal")
@@ -325,13 +326,12 @@ with tab6:
                 admin_subject_options = []
                 for s in default_subjects + db_subjects:
                     if s and s not in admin_subject_options:
-                        admin_subject_options.append(s)
+                        all_subs.append(s)
                 admin_subject_options.append("+ Add New Subject")
 
                 col1, col2 = st.columns(2)
                 with col1:
                     selected_class = st.selectbox("Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
-                    
                     if selected_class == "+ Add New Class":
                         final_class = st.text_input("Enter New Class Name", key=f"c_text_{st.session_state.reset_key}").strip()
                     else:
@@ -339,43 +339,37 @@ with tab6:
                         
                 with col2:
                     selected_subject = st.selectbox("Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
-                    
                     if selected_subject == "+ Add New Subject":
                         final_subject = st.text_input("Enter New Subject Name", key=f"s_text_{st.session_state.reset_key}").strip()
                     else:
                         final_subject = selected_subject
                     
-                raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)", key=f"link_{st.session_state.reset_key}").strip()
-                
+                raw_link = st.text_input("Google Drive Share Link", key=f"link_{st.session_state.reset_key}").strip()
                 if raw_link:
                     final_link = raw_link
-                    if "/view" in raw_link:
-                        final_link = raw_link.split("/view")[0] + "/preview"
-                    elif "/edit" in raw_link:
-                        final_link = raw_link.split("/edit")[0] + "/preview"
+                    if "/view" in raw_link: final_link = raw_link.split("/view")[0] + "/preview"
+                    elif "/edit" in raw_link: final_link = raw_link.split("/edit")[0] + "/preview"
                 else:
                     final_link = "Pending"
 
                 already_exists = False
                 needs_confirm = False
-                
                 if final_class and final_subject and not df_mat.empty:
                     mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject)
                     if mask.any():
                         already_exists = True
                         existing_link = str(df_mat.loc[mask, "Link"].iloc[0]).strip()
-                        if existing_link.startswith("http"):
-                            needs_confirm = True
+                        if existing_link.startswith("http"): needs_confirm = True
 
                 confirm_overwrite = True
                 if needs_confirm:
-                    st.warning(f"⚠️ A material link already exists for {final_class} - {final_subject}.")
-                    confirm_overwrite = st.checkbox("I confirm I want to overwrite the old link with this new one.")
+                    st.warning(f"⚠️ Link already exists for {final_class} - {final_subject}.")
+                    confirm_overwrite = st.checkbox("Confirm Overwrite")
 
-                if st.button("Publish Material to Students", type="primary"):
+                if st.button("Publish Material", type="primary"):
                     if final_class and final_subject:
                         if needs_confirm and not confirm_overwrite:
-                            st.error("Please check the confirmation box above to safely overwrite the existing material.")
+                            st.error("Check confirm box.")
                         else:
                             try:
                                 if already_exists:
@@ -386,55 +380,41 @@ with tab6:
                                     new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
                                     updated_df = pd.concat([df_mat, new_data], ignore_index=True)
                                     conn.update(worksheet="Materials", data=updated_df)
-                                
-                                st.session_state.publish_msg = f"✅ Successfully published **{final_subject}** for **Class {final_class}**!"
+                                st.session_state.publish_msg = "✅ Published!"
                                 st.session_state.reset_key += 1 
                                 st.rerun()
-                                
                             except Exception as e:
-                                st.error(f"Failed to publish: {str(e)}")
-                    else:
-                        st.warning("Please enter a Class and Subject before publishing.")
+                                st.error(f"Error: {e}")
 
             # --- TAB 2: PHOTO GALLERY UPLOADER ---
             with admin_tab2:
-                st.write("Upload a photo from your phone directly to the website's gallery slideshow.")
-                uploaded_photo = st.file_uploader("Select a photo (JPG/PNG)", type=["jpg", "jpeg", "png"])
+                st.write("Upload directly from your phone's camera roll.")
+                uploaded_photo = st.file_uploader("Select Photo (JPG/PNG)", type=["jpg", "jpeg", "png"])
                 
                 if st.button("Publish to Gallery", type="primary") and uploaded_photo is not None:
-                    with st.spinner("Uploading to secure server..."):
+                    with st.spinner("Uploading to cloud..."):
                         try:
-                            import requests
-                            import base64
-                            import pandas as pd
-                            from streamlit_gsheets import GSheetsConnection
-                            
-                            # 1. Convert image
+                            import requests, base64
                             bytes_data = uploaded_photo.getvalue()
+                            # Calls from global secrets lobby
                             payload = {
                                 "key": st.secrets["IMGBB_API_KEY"],
                                 "image": base64.b64encode(bytes_data).decode('utf-8')
                             }
-                            
-                            # 2. Send to ImgBB
                             res = requests.post("https://api.imgbb.com/1/upload", data=payload)
                             
                             if res.status_code == 200:
-                                # 3. Get URL
                                 img_url = res.json()["data"]["url"]
-                                
-                                # 4. Save to Sheets
                                 conn = st.connection("gsheets", type=GSheetsConnection)
                                 gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
                                 new_row = pd.DataFrame([{"Image_URL": img_url}])
                                 updated_df = pd.concat([gallery_df, new_row], ignore_index=True)
                                 conn.update(worksheet="Gallery", data=updated_df)
-                                
-                                st.success("✅ Photo published successfully to the Gallery!")
+                                st.success("✅ Photo Published!")
                             else:
-                                st.error("Server error. Could not upload photo.")
+                                st.error("Upload failed. Verify Secrets.")
                         except Exception as e:
-                            st.error(f"An error occurred: {e}")
+                            st.error(f"Error: {e}")
             
             st.write("---")
             if st.button("Log Out"):
@@ -445,78 +425,39 @@ with tab6:
         #          THE STUDENT DASHBOARD
         # ==========================================
         else:
-            st.success(f"Welcome back to Wisdope Academy, {st.session_state.user_name}!")
+            st.success(f"Welcome back, {st.session_state.user_name}!")
             current_class = st.session_state.user_class
             st.write(f"**Batch:** {current_class}")
             st.write("---")
-            
-            st.subheader("📚 Select Your Subject")
-            
             try:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                
                 materials_df = conn.read(worksheet="Materials", ttl=0) 
-                
                 default_subs = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
                 class_db = materials_df[materials_df["Class"].astype(str).str.strip() == str(current_class).strip()]
                 db_subs = class_db["Subject"].tolist() if not class_db.empty else []
-                
-                all_subs = []
-                for sub in default_subs + db_subs:
-                    if sub not in all_subs:
-                        all_subs.append(sub)
-                
+                all_subs = sorted(list(set(default_subs + db_subs)))
                 selected_subject_student = st.selectbox("Choose a subject:", all_subs)
-                
                 if selected_subject_student:
-                    st.write(f"### 📖 {selected_subject_student} Materials")
-                    
                     subject_match = class_db[class_db["Subject"].astype(str).str.strip() == selected_subject_student]
-                    
                     if not subject_match.empty:
                         embed_url = str(subject_match.iloc[0]["Link"]).strip()
                         if embed_url.startswith("http"):
-                            st.caption("These materials are view-only and cannot be downloaded.")
-                            
-                            # --- RESPONSIVE PDF FIX ---
-                            # display: flex + justify-content centers it on desktop
-                            # max-width: 1000px keeps it from getting too wide
-                            st.markdown(
-                                f'''
-                                <div style="display: flex; justify-content: center;">
-                                    <iframe src="{embed_url}" style="width: 100%; max-width: 1000px; height: 700px; border:none; border-radius: 8px;"></iframe>
-                                </div>
-                                ''',
-                                unsafe_allow_html=True,
-                            )
+                            st.markdown(f'<div style="display: flex; justify-content: center;"><iframe src="{embed_url}" style="width: 100%; max-width: 1000px; height: 700px; border:none; border-radius: 8px;"></iframe></div>', unsafe_allow_html=True)
                         else:
-                            st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
+                            st.info("Materials coming soon!")
                     else:
-                        st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
-            
-            except Exception as e:
-                st.error("Could not load study materials database. Please contact Rishav Sir.")
-            
+                        st.info("Materials coming soon!")
+            except:
+                st.error("Database Error.")
             st.write("---")
             st.subheader("📢 Notice Board")
-            st.caption("Latest updates and announcements from Rishav Sir.")
-            
-            # --- RESPONSIVE NOTICE BOARD FIX ---
             notice_url = st.secrets["admin"]["notice_board"]
-            st.markdown(
-                f'''
-                <div style="display: flex; justify-content: center;">
-                    <iframe src="{notice_url}" style="width: 100%; max-width: 800px; height: 700px; border:none; border-radius: 8px;"></iframe>
-                </div>
-                ''',
-                unsafe_allow_html=True,
-            )
-            
-            st.write("---")
+            st.markdown(f'<div style="display: flex; justify-content: center;"><iframe src="{notice_url}" style="width: 100%; max-width: 800px; height: 700px; border:none; border-radius: 8px;"></iframe></div>', unsafe_allow_html=True)
             if st.button("Log Out"):
                 st.session_state.logged_in = False
                 st.rerun()
+                            
             
 st.divider()
 # ==========================================
