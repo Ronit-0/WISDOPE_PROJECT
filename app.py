@@ -246,99 +246,144 @@ with tab6:
             if "reset_key" not in st.session_state:
                 st.session_state.reset_key = 0
 
-            st.write("Add new subjects and PDF/Video links to the database here.")
-            
-            import pandas as pd
-            try:
-                from streamlit_gsheets import GSheetsConnection
-                conn = st.connection("gsheets", type=GSheetsConnection)
-                df_mat = conn.read(worksheet="Materials", ttl=0) 
-            except Exception:
-                df_mat = pd.DataFrame(columns=["Class", "Subject", "Link"])
+            # --- NEW ADMIN TABS ---
+            admin_tab1, admin_tab2 = st.tabs(["📚 Study Materials", "📸 Photo Gallery"])
 
-            default_classes = ["XII", "XI", "X", "IX", "VIII"]
-            db_classes = df_mat["Class"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
-            admin_class_options = []
-            for c in default_classes + db_classes:
-                if c and c not in admin_class_options:
-                    admin_class_options.append(c)
-            admin_class_options.append("+ Add New Class")
-
-            default_subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
-            db_subjects = df_mat["Subject"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
-            admin_subject_options = []
-            for s in default_subjects + db_subjects:
-                if s and s not in admin_subject_options:
-                    admin_subject_options.append(s)
-            admin_subject_options.append("+ Add New Subject")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                selected_class = st.selectbox("Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
+            # --- TAB 1: STUDY MATERIALS ---
+            with admin_tab1:
+                st.write("Add new subjects and PDF/Video links to the database here.")
                 
-                if selected_class == "+ Add New Class":
-                    final_class = st.text_input("Enter New Class Name", key=f"c_text_{st.session_state.reset_key}").strip()
-                else:
-                    final_class = selected_class
+                import pandas as pd
+                try:
+                    from streamlit_gsheets import GSheetsConnection
+                    conn = st.connection("gsheets", type=GSheetsConnection)
+                    df_mat = conn.read(worksheet="Materials", ttl=0) 
+                except Exception:
+                    df_mat = pd.DataFrame(columns=["Class", "Subject", "Link"])
+
+                default_classes = ["XII", "XI", "X", "IX", "VIII"]
+                db_classes = df_mat["Class"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
+                admin_class_options = []
+                for c in default_classes + db_classes:
+                    if c and c not in admin_class_options:
+                        admin_class_options.append(c)
+                admin_class_options.append("+ Add New Class")
+
+                default_subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
+                db_subjects = df_mat["Subject"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
+                admin_subject_options = []
+                for s in default_subjects + db_subjects:
+                    if s and s not in admin_subject_options:
+                        admin_subject_options.append(s)
+                admin_subject_options.append("+ Add New Subject")
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    selected_class = st.selectbox("Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
                     
-            with col2:
-                selected_subject = st.selectbox("Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
-                
-                if selected_subject == "+ Add New Subject":
-                    final_subject = st.text_input("Enter New Subject Name", key=f"s_text_{st.session_state.reset_key}").strip()
-                else:
-                    final_subject = selected_subject
-                
-            raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)", key=f"link_{st.session_state.reset_key}").strip()
-            
-            if raw_link:
-                final_link = raw_link
-                if "/view" in raw_link:
-                    final_link = raw_link.split("/view")[0] + "/preview"
-                elif "/edit" in raw_link:
-                    final_link = raw_link.split("/edit")[0] + "/preview"
-            else:
-                final_link = "Pending"
-
-            already_exists = False
-            needs_confirm = False
-            
-            if final_class and final_subject and not df_mat.empty:
-                mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject)
-                if mask.any():
-                    already_exists = True
-                    existing_link = str(df_mat.loc[mask, "Link"].iloc[0]).strip()
-                    if existing_link.startswith("http"):
-                        needs_confirm = True
-
-            confirm_overwrite = True
-            if needs_confirm:
-                st.warning(f"⚠️ A material link already exists for {final_class} - {final_subject}.")
-                confirm_overwrite = st.checkbox("I confirm I want to overwrite the old link with this new one.")
-
-            if st.button("Publish Material to Students", type="primary"):
-                if final_class and final_subject:
-                    if needs_confirm and not confirm_overwrite:
-                        st.error("Please check the confirmation box above to safely overwrite the existing material.")
+                    if selected_class == "+ Add New Class":
+                        final_class = st.text_input("Enter New Class Name", key=f"c_text_{st.session_state.reset_key}").strip()
                     else:
-                        try:
-                            if already_exists:
-                                idx = df_mat[mask].index[0]
-                                df_mat.at[idx, "Link"] = final_link
-                                conn.update(worksheet="Materials", data=df_mat)
-                            else:
-                                new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
-                                updated_df = pd.concat([df_mat, new_data], ignore_index=True)
-                                conn.update(worksheet="Materials", data=updated_df)
-                            
-                            st.session_state.publish_msg = f"✅ Successfully published **{final_subject}** for **Class {final_class}**!"
-                            st.session_state.reset_key += 1 
-                            st.rerun()
-                            
-                        except Exception as e:
-                            st.error(f"Failed to publish: {str(e)}")
+                        final_class = selected_class
+                        
+                with col2:
+                    selected_subject = st.selectbox("Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
+                    
+                    if selected_subject == "+ Add New Subject":
+                        final_subject = st.text_input("Enter New Subject Name", key=f"s_text_{st.session_state.reset_key}").strip()
+                    else:
+                        final_subject = selected_subject
+                    
+                raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)", key=f"link_{st.session_state.reset_key}").strip()
+                
+                if raw_link:
+                    final_link = raw_link
+                    if "/view" in raw_link:
+                        final_link = raw_link.split("/view")[0] + "/preview"
+                    elif "/edit" in raw_link:
+                        final_link = raw_link.split("/edit")[0] + "/preview"
                 else:
-                    st.warning("Please enter a Class and Subject before publishing.")
+                    final_link = "Pending"
+
+                already_exists = False
+                needs_confirm = False
+                
+                if final_class and final_subject and not df_mat.empty:
+                    mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject)
+                    if mask.any():
+                        already_exists = True
+                        existing_link = str(df_mat.loc[mask, "Link"].iloc[0]).strip()
+                        if existing_link.startswith("http"):
+                            needs_confirm = True
+
+                confirm_overwrite = True
+                if needs_confirm:
+                    st.warning(f"⚠️ A material link already exists for {final_class} - {final_subject}.")
+                    confirm_overwrite = st.checkbox("I confirm I want to overwrite the old link with this new one.")
+
+                if st.button("Publish Material to Students", type="primary"):
+                    if final_class and final_subject:
+                        if needs_confirm and not confirm_overwrite:
+                            st.error("Please check the confirmation box above to safely overwrite the existing material.")
+                        else:
+                            try:
+                                if already_exists:
+                                    idx = df_mat[mask].index[0]
+                                    df_mat.at[idx, "Link"] = final_link
+                                    conn.update(worksheet="Materials", data=df_mat)
+                                else:
+                                    new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
+                                    updated_df = pd.concat([df_mat, new_data], ignore_index=True)
+                                    conn.update(worksheet="Materials", data=updated_df)
+                                
+                                st.session_state.publish_msg = f"✅ Successfully published **{final_subject}** for **Class {final_class}**!"
+                                st.session_state.reset_key += 1 
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"Failed to publish: {str(e)}")
+                    else:
+                        st.warning("Please enter a Class and Subject before publishing.")
+
+            # --- TAB 2: PHOTO GALLERY UPLOADER ---
+            with admin_tab2:
+                st.write("Upload a photo from your phone directly to the website's gallery slideshow.")
+                uploaded_photo = st.file_uploader("Select a photo (JPG/PNG)", type=["jpg", "jpeg", "png"])
+                
+                if st.button("Publish to Gallery", type="primary") and uploaded_photo is not None:
+                    with st.spinner("Uploading to secure server..."):
+                        try:
+                            import requests
+                            import base64
+                            import pandas as pd
+                            from streamlit_gsheets import GSheetsConnection
+                            
+                            # 1. Convert image
+                            bytes_data = uploaded_photo.getvalue()
+                            payload = {
+                                "key": st.secrets["IMGBB_API_KEY"],
+                                "image": base64.b64encode(bytes_data).decode('utf-8')
+                            }
+                            
+                            # 2. Send to ImgBB
+                            res = requests.post("https://api.imgbb.com/1/upload", data=payload)
+                            
+                            if res.status_code == 200:
+                                # 3. Get URL
+                                img_url = res.json()["data"]["url"]
+                                
+                                # 4. Save to Sheets
+                                conn = st.connection("gsheets", type=GSheetsConnection)
+                                gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
+                                new_row = pd.DataFrame([{"Image_URL": img_url}])
+                                updated_df = pd.concat([gallery_df, new_row], ignore_index=True)
+                                conn.update(worksheet="Gallery", data=updated_df)
+                                
+                                st.success("✅ Photo published successfully to the Gallery!")
+                            else:
+                                st.error("Server error. Could not upload photo.")
+                        except Exception as e:
+                            st.error(f"An error occurred: {e}")
             
             st.write("---")
             if st.button("Log Out"):
@@ -421,6 +466,7 @@ with tab6:
             if st.button("Log Out"):
                 st.session_state.logged_in = False
                 st.rerun()
+            
 st.divider()
 # ==========================================
 #               GLOBAL FOOTER
