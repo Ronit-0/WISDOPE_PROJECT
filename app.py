@@ -294,9 +294,9 @@ with tab6:
                     else:
                         try:
                             from streamlit_gsheets import GSheetsConnection
+                            import pandas as pd
                             conn = st.connection("gsheets", type=GSheetsConnection)
                             
-                            # READS FROM THE NEW 'Students' TAB
                             df = conn.read(worksheet="Students", ttl=0) 
                             df.columns = df.columns.str.strip()
                             
@@ -308,6 +308,13 @@ with tab6:
                                 st.session_state.logged_in = True
                                 st.session_state.user_name = user_match.iloc[0]["Student Name"]
                                 st.session_state.user_class = user_match.iloc[0]["Class"]
+                                
+                                # --- NEW: Capture the Date of Birth for the Birthday Feature ---
+                                if "Date of Birth" in df.columns:
+                                    st.session_state.user_dob = str(user_match.iloc[0]["Date of Birth"]).strip()
+                                else:
+                                    st.session_state.user_dob = ""
+                                    
                                 st.rerun()
                             else:
                                 st.error("Invalid email or password.")
@@ -442,11 +449,9 @@ with tab6:
                     reg_df = conn.read(worksheet="Students", ttl=0)
                     reg_df.columns = reg_df.columns.str.strip()
                     
-                    # Ensure the required columns exist
                     required_cols = ["Student Name", "WhatsApp Number", "Password"]
                     if all(col in reg_df.columns for col in required_cols):
                         
-                        # Drop empty rows where there is no student name
                         display_df = reg_df.dropna(subset=["Student Name"]).copy()
                         
                         whatsapp_links = []
@@ -454,36 +459,20 @@ with tab6:
                             student_name = str(row["Student Name"]).strip()
                             student_pass = str(row["Password"]).replace(".0", "").strip()
                             
-                            # THE BULLETPROOF PHONE NUMBER CLEANER
                             raw_number = str(row["WhatsApp Number"]).strip()
-                            
-                            # 1. Remove the hidden decimal if it exists
-                            if raw_number.endswith(".0"):
-                                raw_number = raw_number[:-2]
-                                
-                            # 2. Strip away any spaces, dashes, or plus signs
+                            if raw_number.endswith(".0"): raw_number = raw_number[:-2]
                             clean_number = ''.join(filter(str.isdigit, raw_number))
                             
-                            # 3. Handle different length scenarios
-                            if len(clean_number) == 10:
-                                clean_number = "91" + clean_number
-                            elif len(clean_number) == 11 and clean_number.startswith("0"):
-                                clean_number = "91" + clean_number[1:]
-                            elif len(clean_number) == 12 and clean_number.startswith("91"):
-                                pass
+                            if len(clean_number) == 10: clean_number = "91" + clean_number
+                            elif len(clean_number) == 11 and clean_number.startswith("0"): clean_number = "91" + clean_number[1:]
+                            elif len(clean_number) == 12 and clean_number.startswith("91"): pass
                                 
-                            # Create the custom message
                             msg = f"Hello {student_name}, your Wisdope Academy fee is received. Your password for this month is: {student_pass}"
                             encoded_msg = urllib.parse.quote(msg)
-                            
-                            # Generate WhatsApp Link
                             link = f"https://wa.me/{clean_number}?text={encoded_msg}"
                             whatsapp_links.append(link)
                             
-                        # Add the links as a new column
                         display_df["Action"] = whatsapp_links
-                        
-                        # Render the interactive dataframe
                         st.dataframe(
                             display_df,
                             column_config={
@@ -506,9 +495,37 @@ with tab6:
         # ==========================================
         else:
             st.success(f"Welcome, {st.session_state.user_name}!")
-            
-            # --- THE NEW BATCH DISPLAY ---
             st.write(f"🎓 **Batch:** {st.session_state.user_class}")
+            
+            # --- THE NEW BIRTHDAY SURPRISE FEATURE ---
+            if st.session_state.get("user_dob") and st.session_state.user_dob.lower() not in ["nan", "none", ""]:
+                try:
+                    import pandas as pd
+                    from datetime import datetime, timedelta
+                    
+                    # Convert the Google Sheet date string into a real Date
+                    dob_dt = pd.to_datetime(st.session_state.user_dob, dayfirst=True)
+                    
+                    # Get exact current time in India (UTC + 5:30)
+                    ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                    
+                    # Check if the Day and Month match today!
+                    if dob_dt.month == ist_now.month and dob_dt.day == ist_now.day:
+                        # Make sure balloons only play once so it doesn't get annoying
+                        if "bday_celebrated" not in st.session_state:
+                            st.balloons()
+                            st.session_state.bday_celebrated = True
+                        
+                        # The beautiful gold Birthday Message box
+                        st.markdown(f"""
+                        <div style="background-color: rgba(255, 215, 0, 0.15); padding: 15px; border-radius: 10px; border: 2px solid gold; text-align: center; margin-bottom: 20px;">
+                            <h2 style="color: gold; margin-top: 0px;">🎉 Happy Birthday, {st.session_state.user_name}! 🎂</h2>
+                            <p style="font-size: 16px; margin-bottom: 0px;">Wishing you a fantastic day and a wonderful year ahead! Keep shining and keep learning.<br><b>- Rishav Sir & The Wisdope Team</b></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                except Exception as e:
+                    pass # Fails silently if the date format was typed incorrectly in the sheet
+            
             st.write("---")
             
             try:
@@ -567,7 +584,8 @@ with tab6:
 
         if st.button("Log Out"):
             st.session_state.logged_in = False
-            st.rerun()                            
+            st.rerun()
+                        
             
 st.divider()
 # ==========================================
