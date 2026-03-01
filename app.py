@@ -469,16 +469,10 @@ with tab6:
             except Exception as e:
                 st.error("Database Error. Please contact Rishav Sir.")
             
-
-            
-            
-            
-            # ... (Rest of your Student Dashboard code above this) ...
-            
             st.write("---")
             st.subheader("📢 Notice Board")
             
-            # --- RESPONSIVE & SCROLLABLE NOTICE BOARD ---
+            # --- RESPONSIVE & SMOOTH SCROLLING NOTICE BOARD ---
             notice_url = st.secrets["admin"]["notice_board"]
             st.markdown(
                 f'''
@@ -488,9 +482,6 @@ with tab6:
                     justify-content: center; 
                     width: 100%; 
                     margin-bottom: 20px;
-                    /* The magic rules to force scrolling on mobile touch screens */
-                    -webkit-overflow-scrolling: touch; 
-                    overflow-y: auto;
                 }}
                 .notice-iframe {{
                     width: 100%; 
@@ -500,6 +491,11 @@ with tab6:
                     border-radius: 12px; 
                     box-shadow: 0 4px 8px rgba(0,0,0,0.5);
                     background-color: #595959; 
+                    
+                    /* THE MOBILE "ANTI-HANG" FIX */
+                    overflow-y: scroll !important;
+                    -webkit-overflow-scrolling: touch !important;
+                    overscroll-behavior: contain; /* Stops the main page from fighting the iframe */
                 }}
                 /* Make it taller on Desktop */
                 @media (min-width: 768px) {{
