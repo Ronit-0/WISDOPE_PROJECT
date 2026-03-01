@@ -469,9 +469,23 @@ with tab6:
             except Exception as e:
                 st.error("Database Error. Please contact Rishav Sir.")
             
+
+            
             st.write("---")
             st.subheader("📢 Notice Board")
-            st.markdown(f'<iframe src="{st.secrets["admin"]["notice_board"]}" style="width: 100%; height: 700px; border:none;"></iframe>', unsafe_allow_html=True)
+            
+            # --- RESPONSIVE NOTICE BOARD ---
+            notice_url = st.secrets["admin"]["notice_board"]
+            st.markdown(
+                f'''
+                <div style="display: flex; justify-content: center; width: 100%; margin-bottom: 20px;">
+                    <iframe src="{notice_url}" 
+                            style="width: 100%; max-width: 700px; height: 400px; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
+                    </iframe>
+                </div>
+                ''', 
+                unsafe_allow_html=True
+            )
 
         if st.button("Log Out"):
             st.session_state.logged_in = False
