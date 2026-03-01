@@ -316,7 +316,9 @@ with tab6:
     else:
         if st.session_state.user_class == "ADMIN":
             st.success("Welcome to the Admin Dashboard, Rishav Sir!")
-            admin_tab1, admin_tab2 = st.tabs(["📚 Study Materials", "📸 Photo Gallery"])
+            
+            # --- ADDED THE 3RD TAB HERE ---
+            admin_tab1, admin_tab2, admin_tab3 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory"])
 
             # ==========================================
             #      ADMIN: STUDY MATERIALS (WITH CHAPTERS)
@@ -334,40 +336,34 @@ with tab6:
                     from streamlit_gsheets import GSheetsConnection
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     df_mat = conn.read(worksheet="Materials", ttl=0) 
-                    # Failsafe if Chapter column is missing
                     if 'Chapter' not in df_mat.columns:
                         df_mat['Chapter'] = "General"
                 except Exception:
                     df_mat = pd.DataFrame(columns=["Class", "Subject", "Chapter", "Link"])
 
-                # 1. CLASS SELECTION
                 default_classes = ["XII", "XI", "X", "IX", "VIII"]
                 db_classes = df_mat["Class"].dropna().unique().tolist() if not df_mat.empty else []
                 admin_class_options = sorted(list(set(default_classes + db_classes))) + ["+ Add New Class"]
                 selected_class = st.selectbox("1. Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
                 final_class = st.text_input("Enter New Class", key=f"c_t_{st.session_state.reset_key}").strip() if selected_class == "+ Add New Class" else selected_class
                 
-                # 2. SUBJECT SELECTION
                 default_subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
                 db_subjects = df_mat["Subject"].dropna().unique().tolist() if not df_mat.empty else []
                 admin_subject_options = sorted(list(set(default_subjects + db_subjects))) + ["+ Add New Subject"]
                 selected_subject = st.selectbox("2. Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
                 final_subject = st.text_input("Enter New Subject", key=f"s_t_{st.session_state.reset_key}").strip() if selected_subject == "+ Add New Subject" else selected_subject
                 
-                # 3. CHAPTER SELECTION (NEW!)
                 db_chapters = df_mat[(df_mat["Class"] == final_class) & (df_mat["Subject"] == final_subject)]["Chapter"].dropna().unique().tolist() if not df_mat.empty else []
                 admin_chapter_options = sorted(list(set(db_chapters))) + ["+ Add New Chapter"]
                 selected_chapter = st.selectbox("3. Chapter / Topic Name", admin_chapter_options, key=f"ch_drop_{st.session_state.reset_key}")
                 final_chapter = st.text_input("Enter New Chapter Name", key=f"ch_t_{st.session_state.reset_key}").strip() if selected_chapter == "+ Add New Chapter" else selected_chapter
                 
-                # 4. LINK
                 raw_link = st.text_input("4. Google Drive Share Link", key=f"l_{st.session_state.reset_key}").strip()
                 final_link = raw_link.replace("/view", "/preview").replace("/edit", "/preview") if raw_link else "Pending"
 
                 if st.button("Publish Material", type="primary"):
                     if final_class and final_subject and final_chapter:
                         try:
-                            # Check if overwriting existing chapter
                             mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject) & (df_mat["Chapter"].astype(str).str.strip() == final_chapter)
                             if mask.any():
                                 idx = df_mat[mask].index[0]
@@ -386,12 +382,10 @@ with tab6:
                         st.warning("Please fill out Class, Subject, and Chapter.")
 
             # ==========================================
-            #      ADMIN: PHOTO GALLERY (MULTI-UPLOAD)
+            #      ADMIN: PHOTO GALLERY
             # ==========================================
             with admin_tab2:
                 st.subheader("Add Photos to Gallery")
-                
-                # NEW: accept_multiple_files=True added here!
                 uploaded_photos = st.file_uploader("Select Photos (JPG/PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
                 compress_image = st.checkbox("Compress photos for faster loading? (Uncheck if images are already small)", value=True)
                 
@@ -421,7 +415,6 @@ with tab6:
                                 if res.status_code == 200:
                                     new_urls.append({"Image_URL": res.json()["data"]["url"]})
                             
-                            # Save all successful URLs to Google Sheets at once
                             if new_urls:
                                 conn = st.connection("gsheets", type=GSheetsConnection)
                                 gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
@@ -432,6 +425,74 @@ with tab6:
                                 st.error("Upload failed for all images.")
                         except Exception as e:
                             st.error(f"Error: {e}")
+
+            # ==========================================
+            #      ADMIN: STUDENT DIRECTORY (WHATSAPP)
+            # ==========================================
+            with admin_tab3:
+                st.subheader("👥 Student Directory & Passwords")
+                st.write("View all registered students. Click the button next to their name to automatically send their monthly password via WhatsApp.")
+                
+                try:
+                    from streamlit_gsheets import GSheetsConnection
+                    import urllib.parse
+                    
+                    conn = st.connection("gsheets", type=GSheetsConnection)
+                    reg_df = conn.read(worksheet="Registration", ttl=0)
+                    reg_df.columns = reg_df.columns.str.strip()
+                    
+                    # Smart column finders (in case names vary slightly)
+                    name_col, phone_col, pass_col = None, None, None
+                    for col in reg_df.columns:
+                        col_lower = col.lower()
+                        if "name" in col_lower: name_col = col
+                        if "whatsapp" in col_lower or "phone" in col_lower or "number" in col_lower: phone_col = col
+                        if "password" in col_lower: pass_col = col
+                        
+                    if name_col and phone_col and pass_col:
+                        # Drop empty rows
+                        display_df = reg_df.dropna(subset=[name_col, phone_col]).copy()
+                        
+                        whatsapp_links = []
+                        for index, row in display_df.iterrows():
+                            student_name = str(row[name_col]).strip()
+                            student_pass = str(row[pass_col]).strip()
+                            raw_number = str(row[phone_col]).strip()
+                            
+                            # Clean the phone number (removes + or spaces)
+                            clean_number = ''.join(filter(str.isdigit, raw_number))
+                            # Automatically add India's country code if it's just 10 digits
+                            if len(clean_number) == 10:
+                                clean_number = "91" + clean_number
+                                
+                            # Create the custom message
+                            msg = f"Hello {student_name}, your Wisdope Academy fee is received. Your password for this month is: {student_pass}"
+                            encoded_msg = urllib.parse.quote(msg)
+                            
+                            # Generate WhatsApp Link
+                            link = f"https://wa.me/{clean_number}?text={encoded_msg}"
+                            whatsapp_links.append(link)
+                            
+                        # Add the links as a new column
+                        display_df["Action"] = whatsapp_links
+                        
+                        # Render the interactive dataframe
+                        st.dataframe(
+                            display_df,
+                            column_config={
+                                "Action": st.column_config.LinkColumn(
+                                    "Send Password",
+                                    display_text="📲 Send WhatsApp"
+                                )
+                            },
+                            hide_index=True,
+                            use_container_width=True
+                        )
+                    else:
+                        st.warning("Could not find the Name, Phone, or Password columns in your spreadsheet.")
+                        
+                except Exception as e:
+                    st.error(f"Error loading directory: {str(e)}")
 
         # ==========================================
         #          THE STUDENT DASHBOARD
@@ -451,13 +512,11 @@ with tab6:
                 if not student_subs:
                     st.info("No materials available for your class yet.")
                 else:
-                    # 1. Choose Subject
                     sel_sub = st.selectbox("1. Choose a subject:", student_subs)
                     if sel_sub:
                         sub_match = c_mat[c_mat["Subject"] == sel_sub]
                         chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
                         
-                        # 2. Choose Chapter
                         sel_chap = st.selectbox("2. Choose a chapter/topic:", chapter_list)
                         
                         if sel_chap:
@@ -472,37 +531,20 @@ with tab6:
             st.write("---")
             st.subheader("📢 Notice Board")
             
-            # --- RESPONSIVE & SMOOTH SCROLLING NOTICE BOARD ---
             notice_url = st.secrets["admin"]["notice_board"]
             st.markdown(
                 f'''
                 <style>
                 .notice-wrapper {{
-                    display: flex; 
-                    justify-content: center; 
-                    width: 100%; 
-                    margin-bottom: 20px;
+                    display: flex; justify-content: center; width: 100%; margin-bottom: 20px;
                 }}
                 .notice-iframe {{
-                    width: 100%; 
-                    max-width: 700px; 
-                    height: 250px; 
-                    border: 2px solid rgba(255,255,255,0.1); 
-                    border-radius: 12px; 
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-                    background-color: #595959; 
-                    
-                    /* THE MOBILE "ANTI-HANG" FIX */
-                    overflow-y: scroll !important;
-                    -webkit-overflow-scrolling: touch !important;
-                    overscroll-behavior: contain; /* Stops the main page from fighting the iframe */
+                    width: 100%; max-width: 700px; height: 250px; 
+                    border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; 
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.5); background-color: #595959; 
+                    overflow-y: scroll !important; -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain;
                 }}
-                /* Make it taller on Desktop */
-                @media (min-width: 768px) {{
-                    .notice-iframe {{
-                        height: 380px; 
-                    }}
-                }}
+                @media (min-width: 768px) {{ .notice-iframe {{ height: 380px; }} }}
                 </style>
                 <div class="notice-wrapper">
                     <iframe class="notice-iframe" src="{notice_url}" scrolling="yes"></iframe>
@@ -513,8 +555,7 @@ with tab6:
 
         if st.button("Log Out"):
             st.session_state.logged_in = False
-            st.rerun()
-                            
+            st.rerun()                            
             
 st.divider()
 # ==========================================
