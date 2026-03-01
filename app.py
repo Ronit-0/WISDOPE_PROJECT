@@ -295,33 +295,35 @@ with tab6:
                         try:
                             from streamlit_gsheets import GSheetsConnection
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            df = conn.read(worksheet="Registration", ttl=0) 
+                            
+                            # NOW READS FROM THE NEW 'Students' TAB
+                            df = conn.read(worksheet="Students", ttl=0) 
                             df.columns = df.columns.str.strip()
+                            
                             sheet_emails = df['Email Address'].astype(str).str.strip().str.lower()
                             sheet_passwords = df['Password'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
                             user_match = df[(sheet_emails == login_email) & (sheet_passwords == login_pass)]
                             
                             if not user_match.empty:
                                 st.session_state.logged_in = True
-                                st.session_state.user_name = user_match.iloc[0]["Student's Full Name"]
-                                st.session_state.user_class = user_match.iloc[0]["Current Class/Grade Level"]
+                                # Matches the new column names exactly
+                                st.session_state.user_name = user_match.iloc[0]["Student Name"]
+                                st.session_state.user_class = user_match.iloc[0]["Class"]
                                 st.rerun()
                             else:
                                 st.error("Invalid email or password.")
                         except Exception as e:
-                            st.error(f"Login Error: {str(e)}")
+                            st.error(f"Login Error (Make sure 'Students' tab exists): {str(e)}")
                 else:
                     st.warning("Please enter both fields.")
 
     else:
         if st.session_state.user_class == "ADMIN":
             st.success("Welcome to the Admin Dashboard, Rishav Sir!")
-            
-            # --- ADDED THE 3RD TAB HERE ---
             admin_tab1, admin_tab2, admin_tab3 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory"])
 
             # ==========================================
-            #      ADMIN: STUDY MATERIALS (WITH CHAPTERS)
+            #      ADMIN: STUDY MATERIALS
             # ==========================================
             with admin_tab1:
                 st.write("Add new subjects, chapters, and PDF/Video links here.")
@@ -430,34 +432,30 @@ with tab6:
             #      ADMIN: STUDENT DIRECTORY (WHATSAPP)
             # ==========================================
             with admin_tab3:
-                st.subheader("👥 Student Directory & Passwords")
-                st.write("View all registered students. Click the button next to their name to automatically send their monthly password via WhatsApp.")
+                st.subheader("👥 Active Student Directory")
+                st.write("Click the button next to their name to automatically send their monthly password via WhatsApp.")
                 
                 try:
                     from streamlit_gsheets import GSheetsConnection
                     import urllib.parse
                     
                     conn = st.connection("gsheets", type=GSheetsConnection)
-                    reg_df = conn.read(worksheet="Registration", ttl=0)
+                    # NOW READS FROM THE NEW 'Students' TAB
+                    reg_df = conn.read(worksheet="Students", ttl=0)
                     reg_df.columns = reg_df.columns.str.strip()
                     
-                    # Smart column finders (in case names vary slightly)
-                    name_col, phone_col, pass_col = None, None, None
-                    for col in reg_df.columns:
-                        col_lower = col.lower()
-                        if "name" in col_lower: name_col = col
-                        if "whatsapp" in col_lower or "phone" in col_lower or "number" in col_lower: phone_col = col
-                        if "password" in col_lower: pass_col = col
+                    # Ensure the required columns exist
+                    required_cols = ["Student Name", "WhatsApp Number", "Password"]
+                    if all(col in reg_df.columns for col in required_cols):
                         
-                    if name_col and phone_col and pass_col:
-                        # Drop empty rows
-                        display_df = reg_df.dropna(subset=[name_col, phone_col]).copy()
+                        # Drop empty rows where there is no student name
+                        display_df = reg_df.dropna(subset=["Student Name"]).copy()
                         
                         whatsapp_links = []
                         for index, row in display_df.iterrows():
-                            student_name = str(row[name_col]).strip()
-                            student_pass = str(row[pass_col]).strip()
-                            raw_number = str(row[phone_col]).strip()
+                            student_name = str(row["Student Name"]).strip()
+                            student_pass = str(row["Password"]).strip()
+                            raw_number = str(row["WhatsApp Number"]).strip()
                             
                             # Clean the phone number (removes + or spaces)
                             clean_number = ''.join(filter(str.isdigit, raw_number))
@@ -489,7 +487,7 @@ with tab6:
                             use_container_width=True
                         )
                     else:
-                        st.warning("Could not find the Name, Phone, or Password columns in your spreadsheet.")
+                        st.warning("Missing required columns. Ensure your 'Students' tab has exactly: Student Name, WhatsApp Number, and Password.")
                         
                 except Exception as e:
                     st.error(f"Error loading directory: {str(e)}")
