@@ -471,6 +471,8 @@ with tab6:
             
 
             
+            
+            
             st.write("---")
             st.subheader("📢 Notice Board")
             
@@ -478,10 +480,31 @@ with tab6:
             notice_url = st.secrets["admin"]["notice_board"]
             st.markdown(
                 f'''
-                <div style="display: flex; justify-content: center; width: 100%; margin-bottom: 20px;">
-                    <iframe src="{notice_url}" 
-                            style="width: 100%; max-width: 700px; height: 400px; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
-                    </iframe>
+                <style>
+                .notice-container {{
+                    display: flex; 
+                    justify-content: center; 
+                    width: 100%; 
+                    margin-bottom: 20px;
+                }}
+                .notice-iframe {{
+                    width: 100%; 
+                    max-width: 700px; 
+                    height: 250px; /* Shorter on mobile to remove the empty gap */
+                    border: 2px solid rgba(255,255,255,0.1); 
+                    border-radius: 12px; 
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                    background-color: #595959; /* Fills empty space with dark grey */
+                }}
+                /* Smart rule: Make it taller ONLY if viewed on a Desktop screen */
+                @media (min-width: 768px) {{
+                    .notice-iframe {{
+                        height: 380px; 
+                    }}
+                }}
+                </style>
+                <div class="notice-container">
+                    <iframe class="notice-iframe" src="{notice_url}"></iframe>
                 </div>
                 ''', 
                 unsafe_allow_html=True
