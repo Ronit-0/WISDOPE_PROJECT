@@ -473,38 +473,43 @@ with tab6:
             
             
             
+            # ... (Rest of your Student Dashboard code above this) ...
+            
             st.write("---")
             st.subheader("📢 Notice Board")
             
-            # --- RESPONSIVE NOTICE BOARD ---
+            # --- RESPONSIVE & SCROLLABLE NOTICE BOARD ---
             notice_url = st.secrets["admin"]["notice_board"]
             st.markdown(
                 f'''
                 <style>
-                .notice-container {{
+                .notice-wrapper {{
                     display: flex; 
                     justify-content: center; 
                     width: 100%; 
                     margin-bottom: 20px;
+                    /* The magic rules to force scrolling on mobile touch screens */
+                    -webkit-overflow-scrolling: touch; 
+                    overflow-y: auto;
                 }}
                 .notice-iframe {{
                     width: 100%; 
                     max-width: 700px; 
-                    height: 250px; /* Shorter on mobile to remove the empty gap */
+                    height: 250px; 
                     border: 2px solid rgba(255,255,255,0.1); 
                     border-radius: 12px; 
                     box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-                    background-color: #595959; /* Fills empty space with dark grey */
+                    background-color: #595959; 
                 }}
-                /* Smart rule: Make it taller ONLY if viewed on a Desktop screen */
+                /* Make it taller on Desktop */
                 @media (min-width: 768px) {{
                     .notice-iframe {{
                         height: 380px; 
                     }}
                 }}
                 </style>
-                <div class="notice-container">
-                    <iframe class="notice-iframe" src="{notice_url}"></iframe>
+                <div class="notice-wrapper">
+                    <iframe class="notice-iframe" src="{notice_url}" scrolling="yes"></iframe>
                 </div>
                 ''', 
                 unsafe_allow_html=True
