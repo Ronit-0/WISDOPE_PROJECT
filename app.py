@@ -296,7 +296,7 @@ with tab6:
                             from streamlit_gsheets import GSheetsConnection
                             conn = st.connection("gsheets", type=GSheetsConnection)
                             
-                            # NOW READS FROM THE NEW 'Students' TAB
+                            # READS FROM THE NEW 'Students' TAB
                             df = conn.read(worksheet="Students", ttl=0) 
                             df.columns = df.columns.str.strip()
                             
@@ -306,7 +306,6 @@ with tab6:
                             
                             if not user_match.empty:
                                 st.session_state.logged_in = True
-                                # Matches the new column names exactly
                                 st.session_state.user_name = user_match.iloc[0]["Student Name"]
                                 st.session_state.user_class = user_match.iloc[0]["Class"]
                                 st.rerun()
@@ -440,7 +439,6 @@ with tab6:
                     import urllib.parse
                     
                     conn = st.connection("gsheets", type=GSheetsConnection)
-                    # NOW READS FROM THE NEW 'Students' TAB
                     reg_df = conn.read(worksheet="Students", ttl=0)
                     reg_df.columns = reg_df.columns.str.strip()
                     
@@ -454,14 +452,25 @@ with tab6:
                         whatsapp_links = []
                         for index, row in display_df.iterrows():
                             student_name = str(row["Student Name"]).strip()
-                            student_pass = str(row["Password"]).strip()
+                            student_pass = str(row["Password"]).replace(".0", "").strip()
+                            
+                            # THE BULLETPROOF PHONE NUMBER CLEANER
                             raw_number = str(row["WhatsApp Number"]).strip()
                             
-                            # Clean the phone number (removes + or spaces)
+                            # 1. Remove the hidden decimal if it exists
+                            if raw_number.endswith(".0"):
+                                raw_number = raw_number[:-2]
+                                
+                            # 2. Strip away any spaces, dashes, or plus signs
                             clean_number = ''.join(filter(str.isdigit, raw_number))
-                            # Automatically add India's country code if it's just 10 digits
+                            
+                            # 3. Handle different length scenarios
                             if len(clean_number) == 10:
                                 clean_number = "91" + clean_number
+                            elif len(clean_number) == 11 and clean_number.startswith("0"):
+                                clean_number = "91" + clean_number[1:]
+                            elif len(clean_number) == 12 and clean_number.startswith("91"):
+                                pass
                                 
                             # Create the custom message
                             msg = f"Hello {student_name}, your Wisdope Academy fee is received. Your password for this month is: {student_pass}"
@@ -497,6 +506,11 @@ with tab6:
         # ==========================================
         else:
             st.success(f"Welcome, {st.session_state.user_name}!")
+            
+            # --- THE NEW BATCH DISPLAY ---
+            st.write(f"🎓 **Batch:** {st.session_state.user_class}")
+            st.write("---")
+            
             try:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
