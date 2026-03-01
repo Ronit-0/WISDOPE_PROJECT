@@ -167,7 +167,7 @@ with tab3:
                 slides[i].style.display = "none";  
               }}
               slides[slideIndex-1].style.display = "block";  
-              timer = setTimeout(() => plusSlides(1), 15000); // Auto-slide every 15 seconds
+              timer = setTimeout(() => plusSlides(1), 10000); // Auto-slide every 10 seconds
             }}
             </script>
             
@@ -286,26 +286,19 @@ with tab6:
             
             if submit_button:
                 if login_email and login_pass:
-                    # --- SECURE ADMIN LOGIN ---
                     if login_email == st.secrets["admin"]["email"] and login_pass == st.secrets["admin"]["password"]:
                         st.session_state.logged_in = True
                         st.session_state.user_name = "Rishav Sir"
                         st.session_state.user_class = "ADMIN"
                         st.rerun()
-                    
-                    # --- NORMAL STUDENT LOGIN ---
                     else:
                         try:
                             from streamlit_gsheets import GSheetsConnection
                             conn = st.connection("gsheets", type=GSheetsConnection)
                             df = conn.read(worksheet="Registration", ttl=0) 
-                            
                             df.columns = df.columns.str.strip()
-                            df.columns = [f"{col}_{i}" if list(df.columns).count(col) > 1 else col for i, col in enumerate(df.columns)]
-                            
                             sheet_emails = df['Email Address'].astype(str).str.strip().str.lower()
                             sheet_passwords = df['Password'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-                            
                             user_match = df[(sheet_emails == login_email) & (sheet_passwords == login_pass)]
                             
                             if not user_match.empty:
@@ -316,245 +309,173 @@ with tab6:
                             else:
                                 st.error("Invalid email or password.")
                         except Exception as e:
-                            st.error(f"Debug Error: {str(e)}")
+                            st.error(f"Login Error: {str(e)}")
                 else:
                     st.warning("Please enter both fields.")
 
     else:
-        # ==========================================
-        #           THE ADMIN DASHBOARD
-        # ==========================================
         if st.session_state.user_class == "ADMIN":
             st.success("Welcome to the Admin Dashboard, Rishav Sir!")
-            
-            if "publish_msg" in st.session_state:
-                st.success(st.session_state.publish_msg)
-                del st.session_state.publish_msg 
-
-            if "reset_key" not in st.session_state:
-                st.session_state.reset_key = 0
-
-            # --- NEW ADMIN TABS ---
             admin_tab1, admin_tab2 = st.tabs(["📚 Study Materials", "📸 Photo Gallery"])
 
-            # --- TAB 1: STUDY MATERIALS ---
+            # ==========================================
+            #      ADMIN: STUDY MATERIALS (WITH CHAPTERS)
+            # ==========================================
             with admin_tab1:
-                st.write("Add new subjects and PDF/Video links to the database here.")
+                st.write("Add new subjects, chapters, and PDF/Video links here.")
+                if "publish_msg" in st.session_state:
+                    st.success(st.session_state.publish_msg)
+                    del st.session_state.publish_msg 
+                if "reset_key" not in st.session_state:
+                    st.session_state.reset_key = 0
                 
                 import pandas as pd
                 try:
                     from streamlit_gsheets import GSheetsConnection
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     df_mat = conn.read(worksheet="Materials", ttl=0) 
+                    # Failsafe if Chapter column is missing
+                    if 'Chapter' not in df_mat.columns:
+                        df_mat['Chapter'] = "General"
                 except Exception:
-                    df_mat = pd.DataFrame(columns=["Class", "Subject", "Link"])
+                    df_mat = pd.DataFrame(columns=["Class", "Subject", "Chapter", "Link"])
 
+                # 1. CLASS SELECTION
                 default_classes = ["XII", "XI", "X", "IX", "VIII"]
-                db_classes = df_mat["Class"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
-                admin_class_options = []
-                for c in default_classes + db_classes:
-                    if c and c not in admin_class_options:
-                        admin_class_options.append(c)
-                admin_class_options.append("+ Add New Class")
-
+                db_classes = df_mat["Class"].dropna().unique().tolist() if not df_mat.empty else []
+                admin_class_options = sorted(list(set(default_classes + db_classes))) + ["+ Add New Class"]
+                selected_class = st.selectbox("1. Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
+                final_class = st.text_input("Enter New Class", key=f"c_t_{st.session_state.reset_key}").strip() if selected_class == "+ Add New Class" else selected_class
+                
+                # 2. SUBJECT SELECTION
                 default_subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
-                db_subjects = df_mat["Subject"].dropna().astype(str).str.strip().unique().tolist() if not df_mat.empty else []
-                admin_subject_options = []
-                for s in default_subjects + db_subjects:
-                    if s and s not in admin_subject_options:
-                        admin_subject_options.append(s)
-                admin_subject_options.append("+ Add New Subject")
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    selected_class = st.selectbox("Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
-                    
-                    if selected_class == "+ Add New Class":
-                        final_class = st.text_input("Enter New Class Name", key=f"c_text_{st.session_state.reset_key}").strip()
-                    else:
-                        final_class = selected_class
-                        
-                with col2:
-                    selected_subject = st.selectbox("Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
-                    
-                    if selected_subject == "+ Add New Subject":
-                        final_subject = st.text_input("Enter New Subject Name", key=f"s_text_{st.session_state.reset_key}").strip()
-                    else:
-                        final_subject = selected_subject
-                    
-                raw_link = st.text_input("Google Drive Share Link (Leave blank if not ready yet)", key=f"link_{st.session_state.reset_key}").strip()
+                db_subjects = df_mat["Subject"].dropna().unique().tolist() if not df_mat.empty else []
+                admin_subject_options = sorted(list(set(default_subjects + db_subjects))) + ["+ Add New Subject"]
+                selected_subject = st.selectbox("2. Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
+                final_subject = st.text_input("Enter New Subject", key=f"s_t_{st.session_state.reset_key}").strip() if selected_subject == "+ Add New Subject" else selected_subject
                 
-                if raw_link:
-                    final_link = raw_link
-                    if "/view" in raw_link:
-                        final_link = raw_link.split("/view")[0] + "/preview"
-                    elif "/edit" in raw_link:
-                        final_link = raw_link.split("/edit")[0] + "/preview"
-                else:
-                    final_link = "Pending"
-
-                already_exists = False
-                needs_confirm = False
+                # 3. CHAPTER SELECTION (NEW!)
+                db_chapters = df_mat[(df_mat["Class"] == final_class) & (df_mat["Subject"] == final_subject)]["Chapter"].dropna().unique().tolist() if not df_mat.empty else []
+                admin_chapter_options = sorted(list(set(db_chapters))) + ["+ Add New Chapter"]
+                selected_chapter = st.selectbox("3. Chapter / Topic Name", admin_chapter_options, key=f"ch_drop_{st.session_state.reset_key}")
+                final_chapter = st.text_input("Enter New Chapter Name", key=f"ch_t_{st.session_state.reset_key}").strip() if selected_chapter == "+ Add New Chapter" else selected_chapter
                 
-                if final_class and final_subject and not df_mat.empty:
-                    mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject)
-                    if mask.any():
-                        already_exists = True
-                        existing_link = str(df_mat.loc[mask, "Link"].iloc[0]).strip()
-                        if existing_link.startswith("http"):
-                            needs_confirm = True
+                # 4. LINK
+                raw_link = st.text_input("4. Google Drive Share Link", key=f"l_{st.session_state.reset_key}").strip()
+                final_link = raw_link.replace("/view", "/preview").replace("/edit", "/preview") if raw_link else "Pending"
 
-                confirm_overwrite = True
-                if needs_confirm:
-                    st.warning(f"⚠️ A material link already exists for {final_class} - {final_subject}.")
-                    confirm_overwrite = st.checkbox("I confirm I want to overwrite the old link with this new one.")
-
-                if st.button("Publish Material to Students", type="primary"):
-                    if final_class and final_subject:
-                        if needs_confirm and not confirm_overwrite:
-                            st.error("Please check the confirmation box above to safely overwrite the existing material.")
-                        else:
-                            try:
-                                if already_exists:
-                                    idx = df_mat[mask].index[0]
-                                    df_mat.at[idx, "Link"] = final_link
-                                    conn.update(worksheet="Materials", data=df_mat)
-                                else:
-                                    new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Link": final_link}])
-                                    updated_df = pd.concat([df_mat, new_data], ignore_index=True)
-                                    conn.update(worksheet="Materials", data=updated_df)
-                                
-                                st.session_state.publish_msg = f"✅ Successfully published **{final_subject}** for **Class {final_class}**!"
-                                st.session_state.reset_key += 1 
-                                st.rerun()
-                                
-                            except Exception as e:
-                                st.error(f"Failed to publish: {str(e)}")
-                    else:
-                        st.warning("Please enter a Class and Subject before publishing.")
-
-            # --- TAB 2: PHOTO GALLERY UPLOADER ---
-            with admin_tab2:
-                st.write("Upload a photo from your phone directly to the website's gallery slideshow.")
-                uploaded_photo = st.file_uploader("Select a photo (JPG/PNG)", type=["jpg", "jpeg", "png"])
-                
-                if st.button("Publish to Gallery", type="primary") and uploaded_photo is not None:
-                    with st.spinner("Uploading to secure server..."):
+                if st.button("Publish Material", type="primary"):
+                    if final_class and final_subject and final_chapter:
                         try:
-                            import requests
-                            import base64
-                            import pandas as pd
-                            from streamlit_gsheets import GSheetsConnection
+                            # Check if overwriting existing chapter
+                            mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject) & (df_mat["Chapter"].astype(str).str.strip() == final_chapter)
+                            if mask.any():
+                                idx = df_mat[mask].index[0]
+                                df_mat.at[idx, "Link"] = final_link
+                                conn.update(worksheet="Materials", data=df_mat)
+                            else:
+                                new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Chapter": final_chapter, "Link": final_link}])
+                                updated_df = pd.concat([df_mat, new_data], ignore_index=True)
+                                conn.update(worksheet="Materials", data=updated_df)
+                            st.session_state.publish_msg = f"✅ Published {final_chapter}!"
+                            st.session_state.reset_key += 1 
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                    else:
+                        st.warning("Please fill out Class, Subject, and Chapter.")
+
+            # ==========================================
+            #      ADMIN: PHOTO GALLERY (MULTI-UPLOAD)
+            # ==========================================
+            with admin_tab2:
+                st.subheader("Add Photos to Gallery")
+                
+                # NEW: accept_multiple_files=True added here!
+                uploaded_photos = st.file_uploader("Select Photos (JPG/PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+                compress_image = st.checkbox("Compress photos for faster loading? (Uncheck if images are already small)", value=True)
+                
+                if st.button("Publish to Gallery", type="primary") and uploaded_photos:
+                    with st.spinner(f"Processing and Uploading {len(uploaded_photos)} photo(s)..."):
+                        try:
+                            import requests, base64, io
+                            from PIL import Image
                             
-                            # 1. Convert image
-                            bytes_data = uploaded_photo.getvalue()
-                            payload = {
-                                "key": st.secrets["IMGBB_API_KEY"],
-                                "image": base64.b64encode(bytes_data).decode('utf-8')
-                            }
+                            new_urls = []
+                            for photo in uploaded_photos:
+                                if compress_image:
+                                    img = Image.open(photo)
+                                    if img.mode != 'RGB': img = img.convert('RGB')
+                                    img.thumbnail((800, 800))
+                                    buffer = io.BytesIO()
+                                    img.save(buffer, format="JPEG", quality=70, optimize=True)
+                                    final_bytes = buffer.getvalue()
+                                else:
+                                    final_bytes = photo.getvalue()
+
+                                payload = {
+                                    "key": st.secrets["IMGBB_API_KEY"],
+                                    "image": base64.b64encode(final_bytes).decode('utf-8')
+                                }
+                                res = requests.post("https://api.imgbb.com/1/upload", data=payload)
+                                if res.status_code == 200:
+                                    new_urls.append({"Image_URL": res.json()["data"]["url"]})
                             
-                            # 2. Send to ImgBB
-                            res = requests.post("https://api.imgbb.com/1/upload", data=payload)
-                            
-                            if res.status_code == 200:
-                                # 3. Get URL
-                                img_url = res.json()["data"]["url"]
-                                
-                                # 4. Save to Sheets
+                            # Save all successful URLs to Google Sheets at once
+                            if new_urls:
                                 conn = st.connection("gsheets", type=GSheetsConnection)
                                 gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
-                                new_row = pd.DataFrame([{"Image_URL": img_url}])
-                                updated_df = pd.concat([gallery_df, new_row], ignore_index=True)
+                                updated_df = pd.concat([gallery_df, pd.DataFrame(new_urls)], ignore_index=True)
                                 conn.update(worksheet="Gallery", data=updated_df)
-                                
-                                st.success("✅ Photo published successfully to the Gallery!")
+                                st.success(f"✅ Successfully published {len(new_urls)} photo(s)!")
                             else:
-                                st.error("Server error. Could not upload photo.")
+                                st.error("Upload failed for all images.")
                         except Exception as e:
-                            st.error(f"An error occurred: {e}")
-            
-            st.write("---")
-            if st.button("Log Out"):
-                st.session_state.logged_in = False
-                st.rerun()
+                            st.error(f"Error: {e}")
 
         # ==========================================
         #          THE STUDENT DASHBOARD
         # ==========================================
         else:
-            st.success(f"Welcome back to Wisdope Academy, {st.session_state.user_name}!")
-            current_class = st.session_state.user_class
-            st.write(f"**Batch:** {current_class}")
-            st.write("---")
-            
-            st.subheader("📚 Select Your Subject")
-            
+            st.success(f"Welcome, {st.session_state.user_name}!")
             try:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                
-                materials_df = conn.read(worksheet="Materials", ttl=0) 
-                
-                default_subs = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
-                class_db = materials_df[materials_df["Class"].astype(str).str.strip() == str(current_class).strip()]
-                db_subs = class_db["Subject"].tolist() if not class_db.empty else []
-                
-                all_subs = []
-                for sub in default_subs + db_subs:
-                    if sub not in all_subs:
-                        all_subs.append(sub)
-                
-                selected_subject_student = st.selectbox("Choose a subject:", all_subs)
-                
-                if selected_subject_student:
-                    st.write(f"### 📖 {selected_subject_student} Materials")
+                m_df = conn.read(worksheet="Materials", ttl=0) 
+                if 'Chapter' not in m_df.columns:
+                    m_df['Chapter'] = "General"
                     
-                    subject_match = class_db[class_db["Subject"].astype(str).str.strip() == selected_subject_student]
-                    
-                    if not subject_match.empty:
-                        embed_url = str(subject_match.iloc[0]["Link"]).strip()
-                        if embed_url.startswith("http"):
-                            st.caption("These materials are view-only and cannot be downloaded.")
-                            
-                            # --- RESPONSIVE PDF FIX ---
-                            # display: flex + justify-content centers it on desktop
-                            # max-width: 1000px keeps it from getting too wide
-                            st.markdown(
-                                f'''
-                                <div style="display: flex; justify-content: center;">
-                                    <iframe src="{embed_url}" style="width: 100%; max-width: 1000px; height: 700px; border:none; border-radius: 8px;"></iframe>
-                                </div>
-                                ''',
-                                unsafe_allow_html=True,
-                            )
-                        else:
-                            st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
-                    else:
-                        st.info(f"⏳ The study materials for **{selected_subject_student}** will be updated or uploaded soon. Stay tuned!")
-            
+                c_mat = m_df[m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
+                student_subs = sorted(list(set(c_mat["Subject"].tolist() if not c_mat.empty else [])))
+                
+                if not student_subs:
+                    st.info("No materials available for your class yet.")
+                else:
+                    # 1. Choose Subject
+                    sel_sub = st.selectbox("1. Choose a subject:", student_subs)
+                    if sel_sub:
+                        sub_match = c_mat[c_mat["Subject"] == sel_sub]
+                        chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
+                        
+                        # 2. Choose Chapter
+                        sel_chap = st.selectbox("2. Choose a chapter/topic:", chapter_list)
+                        
+                        if sel_chap:
+                            final_match = sub_match[sub_match["Chapter"] == sel_chap]
+                            if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
+                                st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
+                            else:
+                                st.info("Materials for this chapter are coming soon!")
             except Exception as e:
-                st.error("Could not load study materials database. Please contact Rishav Sir.")
+                st.error("Database Error. Please contact Rishav Sir.")
             
             st.write("---")
             st.subheader("📢 Notice Board")
-            st.caption("Latest updates and announcements from Rishav Sir.")
-            
-            # --- RESPONSIVE NOTICE BOARD FIX ---
-            notice_url = st.secrets["admin"]["notice_board"]
-            st.markdown(
-                f'''
-                <div style="display: flex; justify-content: center;">
-                    <iframe src="{notice_url}" style="width: 100%; max-width: 800px; height: 700px; border:none; border-radius: 8px;"></iframe>
-                </div>
-                ''',
-                unsafe_allow_html=True,
-            )
-            
-            st.write("---")
-            if st.button("Log Out"):
-                st.session_state.logged_in = False
-                st.rerun()
+            st.markdown(f'<iframe src="{st.secrets["admin"]["notice_board"]}" style="width: 100%; height: 700px; border:none;"></iframe>', unsafe_allow_html=True)
 
+        if st.button("Log Out"):
+            st.session_state.logged_in = False
+            st.rerun()
                             
             
 st.divider()
