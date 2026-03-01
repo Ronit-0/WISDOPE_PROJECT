@@ -502,7 +502,7 @@ st.markdown(
         <a href="https://linkedin.com" target="_blank">
             <img src="https://img.icons8.com/color/48/linkedin.png" width="40" style="transition: transform 0.2s;">
         </a>
-        <a href="https://youtube.com" target="_blank">
+        <a href="https://youtube.com/@rishavkarar7470?si=2vuwFkzjAvltMOeW" target="_blank">
             <img src="https://img.icons8.com/color/48/youtube-play.png" width="40" style="transition: transform 0.2s;">
         </a>
     </div>
