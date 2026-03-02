@@ -68,6 +68,37 @@ st.write("**MSc. (Biotech), R.A. (Pharmacognosy)**")
 st.write("Coaching Classes for Maths, Physics, Chemistry & Biology")
 st.write("---")
 
+# ==========================================
+#         URGENT NEWS TICKER (GLOBAL)
+# ==========================================
+try:
+    from streamlit_gsheets import GSheetsConnection
+    import pandas as pd
+    from datetime import datetime, timedelta
+    
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    # Checks for news. ttl=60 means it refreshes every 1 minute to keep the site fast!
+    news_df = conn.read(worksheet="News", ttl=60) 
+    
+    if not news_df.empty:
+        msg = str(news_df.iloc[0]["Message"]).strip()
+        exp_str = str(news_df.iloc[0]["Expiration"]).strip()
+        
+        # If there is a message and a valid time
+        if msg and msg.lower() != "nan" and exp_str and exp_str.lower() != "nan":
+            exp_dt = pd.to_datetime(exp_str)
+            ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            
+            # If the current time is BEFORE the expiration time, show the banner!
+            if ist_now < exp_dt:
+                st.markdown(f"""
+                <div style="background-color: #ff0000; color: white; padding: 10px; font-size: 18px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(255,0,0,0.4);">
+                    <marquee behavior="scroll" direction="left" scrollamount="8">🚨 URGENT NEWS: {msg}</marquee>
+                </div>
+                """, unsafe_allow_html=True)
+except Exception:
+    pass # Silently skip if the News sheet isn't set up yet
+
 # 3. Main Features & Navigation
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Why Join Us?", "Course Details", "Gallery", "Contact & Location", "Join Wisdope" , "Student Login"])
 
