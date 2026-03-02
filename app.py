@@ -16,29 +16,17 @@ def set_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Rakkas&display=swap');
 
-        /* 1. Remove the Top Header (GitHub menu, Fork, etc.) */
         header {{visibility: hidden;}}
-        
-        /* 2. Remove the Bottom Footer (Made with Streamlit) */
         footer {{visibility: hidden;}}
-        
-        /* 3. Remove the padding at the top of the page */
-        .block-container {{
-            padding-top: 2rem;
-        }}
+        .block-container {{ padding-top: 2rem; }}
 
-        /* 4. FIX: Force Primary (Yellow) Buttons to have Black Text */
-        [kind="primary"] p, 
-        [kind="primary"] span, 
-        [kind="primary"] div {{
+        [kind="primary"] p, [kind="primary"] span, [kind="primary"] div {{
             color: black !important;
             font-weight: 800 !important;
         }}
 
-        /* Existing background and font styles */
         .stApp {{
-            background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), 
-                        url("{bg_image_url}");
+            background: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), url("{bg_image_url}");
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -54,8 +42,7 @@ def set_custom_style():
         }}
         </style>
     """, unsafe_allow_html=True)
-
-# Call the style function
+    
 set_custom_style()
 
 # 2. Header Section
@@ -92,18 +79,14 @@ try:
                 </div>
                 """, unsafe_allow_html=True)
 except Exception:
-    pass
+    pass 
 
-
-# ==========================================
-#       CORE ARCHITECTURE (PUBLIC VS PRIVATE)
-# ==========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# ------------------------------------------
+# ==========================================
 #               PUBLIC WEBSITE
-# ------------------------------------------
+# ==========================================
 if not st.session_state.logged_in:
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Why Join Us?", "Course Details", "Gallery", "Contact & Location", "Join Wisdope" , "Student Login"])
 
@@ -129,7 +112,7 @@ if not st.session_state.logged_in:
             st.write("**Subjects Offered:**")
             st.write("* **Classes VIII-X:** Physics, Chemistry, and Biology (Theory and Practical)")
             st.write("* **Classes XI-XII:** Chemistry and Biology (Theory and Practical), and Physics (Practical only)")
-            
+
     with tab3:
         st.header("📸 Some Glimpses of Our Coaching Institute")
         st.write("---")
@@ -295,11 +278,11 @@ if not st.session_state.logged_in:
                 else:
                     st.warning("Please enter both fields.")
 
-# ------------------------------------------
+# ==========================================
 #              PRIVATE PORTAL
-# ------------------------------------------
+# ==========================================
 else:
-    # Top Action Bar
+    # --- Top Action Bar ---
     top_col1, top_col2 = st.columns([4, 1])
     with top_col1:
         st.header(f"Welcome, {st.session_state.user_name}!")
@@ -310,9 +293,9 @@ else:
             
     st.write("---")
 
-    # ==========================================
+    # ------------------------------------------
     #             ADMIN DASHBOARD
-    # ==========================================
+    # ------------------------------------------
     if st.session_state.user_class == "ADMIN":
         admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory", "🚨 Urgent News"])
 
@@ -454,9 +437,7 @@ else:
         with admin_tab4:
             st.subheader("🚨 Publish Urgent News")
             news_input = st.text_input("Enter the Urgent Message:")
-            duration = st.selectbox("Display for how long?", [
-                "1 Hour", "3 Hours", "6 Hours", "12 Hours", "24 Hours", "2 Days", "3 Days", "1 Week"
-            ])
+            duration = st.selectbox("Display for how long?", ["1 Hour", "3 Hours", "6 Hours", "12 Hours", "24 Hours", "2 Days", "3 Days", "1 Week"])
             
             col1, col2 = st.columns(2)
             with col1:
@@ -490,9 +471,9 @@ else:
                     except Exception as e:
                         st.error(f"Database Error: {e}")
 
-    # ==========================================
+    # ------------------------------------------
     #            STUDENT DASHBOARD
-    # ==========================================
+    # ------------------------------------------
     else:
         st.write(f"🎓 **Batch:** {st.session_state.user_class}")
         
