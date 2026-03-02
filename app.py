@@ -354,15 +354,28 @@ with tab6:
                     st.warning("Please enter both fields.")
 
     else:
+        # --- PREVENT STREAMLIT FROM JUMPING TO TAB 1 AFTER LOGIN ---
+        import streamlit.components.v1 as components
+        components.html("""
+            <script>
+                var tabs = window.parent.document.querySelectorAll('[data-baseweb="tab"]');
+                if(tabs.length > 5) {
+                    tabs[5].click(); // Instantly clicks the 6th tab (Index 5)
+                }
+            </script>
+        """, height=0)
+
+        # ==========================================
+        #          THE ADMIN DASHBOARD
+        # ==========================================
         if st.session_state.user_class == "ADMIN":
             st.success("Welcome to the Admin Dashboard, Rishav Sir!")
             
-            # --- ADDED THE 4TH ADMIN TAB HERE ---
             admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory", "🚨 Urgent News"])
 
-            # ==========================================
+            # ------------------------------------------
             #      ADMIN: STUDY MATERIALS
-            # ==========================================
+            # ------------------------------------------
             with admin_tab1:
                 st.write("Add new subjects, chapters, and PDF/Video links here.")
                 if "publish_msg" in st.session_state:
@@ -421,9 +434,9 @@ with tab6:
                     else:
                         st.warning("Please fill out Class, Subject, and Chapter.")
 
-            # ==========================================
+            # ------------------------------------------
             #      ADMIN: PHOTO GALLERY
-            # ==========================================
+            # ------------------------------------------
             with admin_tab2:
                 st.subheader("Add Photos to Gallery")
                 uploaded_photos = st.file_uploader("Select Photos (JPG/PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
@@ -466,9 +479,9 @@ with tab6:
                         except Exception as e:
                             st.error(f"Error: {e}")
 
-            # ==========================================
+            # ------------------------------------------
             #      ADMIN: STUDENT DIRECTORY
-            # ==========================================
+            # ------------------------------------------
             with admin_tab3:
                 st.subheader("👥 Active Student Directory")
                 st.write("Click the button next to their name to automatically send their monthly password via WhatsApp.")
@@ -488,12 +501,14 @@ with tab6:
                         for index, row in display_df.iterrows():
                             student_name = str(row["Student Name"]).strip()
                             student_pass = str(row["Password"]).replace(".0", "").strip()
+                            
                             raw_number = str(row["WhatsApp Number"]).strip()
                             if raw_number.endswith(".0"): raw_number = raw_number[:-2]
                             clean_number = ''.join(filter(str.isdigit, raw_number))
                             
                             if len(clean_number) == 10: clean_number = "91" + clean_number
                             elif len(clean_number) == 11 and clean_number.startswith("0"): clean_number = "91" + clean_number[1:]
+                            elif len(clean_number) == 12 and clean_number.startswith("91"): pass
                             
                             msg = f"Hello {student_name}, your Wisdope Academy fee is received. Your password for this month is: {student_pass}"
                             encoded_msg = urllib.parse.quote(msg)
@@ -510,29 +525,41 @@ with tab6:
                 except Exception as e:
                     st.error(f"Error loading directory: {str(e)}")
 
-            # ==========================================
+            # ------------------------------------------
             #      ADMIN: URGENT NEWS TICKER
-            # ==========================================
+            # ------------------------------------------
             with admin_tab4:
                 st.subheader("🚨 Publish Urgent News")
                 st.write("Display a scrolling red banner at the top of the website for all visitors.")
                 
                 news_input = st.text_input("Enter the Urgent Message (e.g., 'Due to heavy rain, today's 5 PM batch is cancelled'):")
-                duration = st.selectbox("Display for how long?", ["1 Hour", "6 Hours", "12 Hours", "24 Hours"])
+                duration = st.selectbox("Display for how long?", [
+                    "1 Hour", "3 Hours", "6 Hours", "12 Hours", "24 Hours", 
+                    "2 Days", "3 Days", "1 Week"
+                ])
                 
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("📢 Publish News Banner", type="primary"):
                         if news_input:
                             try:
+                                import pandas as pd
                                 from datetime import datetime, timedelta
-                                hours = int(duration.split()[0])
+                                
+                                num = int(duration.split()[0])
+                                if "Hour" in duration:
+                                    time_delta = timedelta(hours=num)
+                                elif "Day" in duration:
+                                    time_delta = timedelta(days=num)
+                                elif "Week" in duration:
+                                    time_delta = timedelta(weeks=num)
+                                
                                 ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                                exp_dt = ist_now + timedelta(hours=hours)
+                                exp_dt = ist_now + time_delta
                                 
                                 new_news = pd.DataFrame([{"Message": news_input, "Expiration": exp_dt.strftime("%Y-%m-%d %H:%M:%S")}])
                                 conn.update(worksheet="News", data=new_news)
-                                st.success(f"✅ News published! It will automatically disappear in {hours} hours.")
+                                st.success(f"✅ News published! It will automatically disappear in {duration}.")
                             except Exception as e:
                                 st.error(f"Database Error: {e}")
                         else:
@@ -540,6 +567,7 @@ with tab6:
                 with col2:
                     if st.button("🗑️ Clear Active News"):
                         try:
+                            import pandas as pd
                             empty_news = pd.DataFrame([{"Message": "", "Expiration": ""}])
                             conn.update(worksheet="News", data=empty_news)
                             st.success("✅ News banner removed immediately!")
@@ -602,7 +630,7 @@ with tab6:
             
             st.write("---")
             st.subheader("📢 Notice Board")
-            st.write("If using an Android device use desktop mode for better view of the notice board")
+            
             notice_url = st.secrets["admin"]["notice_board"]
             st.markdown(
                 f'''
