@@ -340,7 +340,6 @@ with tab6:
                                 st.session_state.user_name = user_match.iloc[0]["Student Name"]
                                 st.session_state.user_class = user_match.iloc[0]["Class"]
                                 
-                                # --- NEW: Capture the Date of Birth for the Birthday Feature ---
                                 if "Date of Birth" in df.columns:
                                     st.session_state.user_dob = str(user_match.iloc[0]["Date of Birth"]).strip()
                                 else:
@@ -357,7 +356,9 @@ with tab6:
     else:
         if st.session_state.user_class == "ADMIN":
             st.success("Welcome to the Admin Dashboard, Rishav Sir!")
-            admin_tab1, admin_tab2, admin_tab3 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory"])
+            
+            # --- ADDED THE 4TH ADMIN TAB HERE ---
+            admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory", "🚨 Urgent News"])
 
             # ==========================================
             #      ADMIN: STUDY MATERIALS
@@ -426,7 +427,7 @@ with tab6:
             with admin_tab2:
                 st.subheader("Add Photos to Gallery")
                 uploaded_photos = st.file_uploader("Select Photos (JPG/PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-                compress_image = st.checkbox("Compress photos for faster loading? (Uncheck if images are already small)", value=True)
+                compress_image = st.checkbox("Compress photos for faster loading?", value=True)
                 
                 if st.button("Publish to Gallery", type="primary") and uploaded_photos:
                     with st.spinner(f"Processing and Uploading {len(uploaded_photos)} photo(s)..."):
@@ -461,12 +462,12 @@ with tab6:
                                 conn.update(worksheet="Gallery", data=updated_df)
                                 st.success(f"✅ Successfully published {len(new_urls)} photo(s)!")
                             else:
-                                st.error("Upload failed for all images.")
+                                st.error("Upload failed.")
                         except Exception as e:
                             st.error(f"Error: {e}")
 
             # ==========================================
-            #      ADMIN: STUDENT DIRECTORY (WHATSAPP)
+            #      ADMIN: STUDENT DIRECTORY
             # ==========================================
             with admin_tab3:
                 st.subheader("👥 Active Student Directory")
@@ -482,44 +483,68 @@ with tab6:
                     
                     required_cols = ["Student Name", "WhatsApp Number", "Password"]
                     if all(col in reg_df.columns for col in required_cols):
-                        
                         display_df = reg_df.dropna(subset=["Student Name"]).copy()
-                        
                         whatsapp_links = []
                         for index, row in display_df.iterrows():
                             student_name = str(row["Student Name"]).strip()
                             student_pass = str(row["Password"]).replace(".0", "").strip()
-                            
                             raw_number = str(row["WhatsApp Number"]).strip()
                             if raw_number.endswith(".0"): raw_number = raw_number[:-2]
                             clean_number = ''.join(filter(str.isdigit, raw_number))
                             
                             if len(clean_number) == 10: clean_number = "91" + clean_number
                             elif len(clean_number) == 11 and clean_number.startswith("0"): clean_number = "91" + clean_number[1:]
-                            elif len(clean_number) == 12 and clean_number.startswith("91"): pass
-                                
+                            
                             msg = f"Hello {student_name}, your Wisdope Academy fee is received. Your password for this month is: {student_pass}"
                             encoded_msg = urllib.parse.quote(msg)
-                            link = f"https://wa.me/{clean_number}?text={encoded_msg}"
-                            whatsapp_links.append(link)
+                            whatsapp_links.append(f"https://wa.me/{clean_number}?text={encoded_msg}")
                             
                         display_df["Action"] = whatsapp_links
                         st.dataframe(
                             display_df,
-                            column_config={
-                                "Action": st.column_config.LinkColumn(
-                                    "Send Password",
-                                    display_text="📲 Send WhatsApp"
-                                )
-                            },
-                            hide_index=True,
-                            use_container_width=True
+                            column_config={"Action": st.column_config.LinkColumn("Send Password", display_text="📲 Send WhatsApp")},
+                            hide_index=True, use_container_width=True
                         )
                     else:
-                        st.warning("Missing required columns. Ensure your 'Students' tab has exactly: Student Name, WhatsApp Number, and Password.")
-                        
+                        st.warning("Missing required columns in 'Students' tab.")
                 except Exception as e:
                     st.error(f"Error loading directory: {str(e)}")
+
+            # ==========================================
+            #      ADMIN: URGENT NEWS TICKER
+            # ==========================================
+            with admin_tab4:
+                st.subheader("🚨 Publish Urgent News")
+                st.write("Display a scrolling red banner at the top of the website for all visitors.")
+                
+                news_input = st.text_input("Enter the Urgent Message (e.g., 'Due to heavy rain, today's 5 PM batch is cancelled'):")
+                duration = st.selectbox("Display for how long?", ["1 Hour", "6 Hours", "12 Hours", "24 Hours"])
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("📢 Publish News Banner", type="primary"):
+                        if news_input:
+                            try:
+                                from datetime import datetime, timedelta
+                                hours = int(duration.split()[0])
+                                ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                                exp_dt = ist_now + timedelta(hours=hours)
+                                
+                                new_news = pd.DataFrame([{"Message": news_input, "Expiration": exp_dt.strftime("%Y-%m-%d %H:%M:%S")}])
+                                conn.update(worksheet="News", data=new_news)
+                                st.success(f"✅ News published! It will automatically disappear in {hours} hours.")
+                            except Exception as e:
+                                st.error(f"Database Error: {e}")
+                        else:
+                            st.warning("Please enter a message first.")
+                with col2:
+                    if st.button("🗑️ Clear Active News"):
+                        try:
+                            empty_news = pd.DataFrame([{"Message": "", "Expiration": ""}])
+                            conn.update(worksheet="News", data=empty_news)
+                            st.success("✅ News banner removed immediately!")
+                        except Exception as e:
+                            st.error(f"Database Error: {e}")
 
         # ==========================================
         #          THE STUDENT DASHBOARD
@@ -528,34 +553,24 @@ with tab6:
             st.success(f"Welcome, {st.session_state.user_name}!")
             st.write(f"🎓 **Batch:** {st.session_state.user_class}")
             
-            # --- THE NEW BIRTHDAY SURPRISE FEATURE ---
             if st.session_state.get("user_dob") and st.session_state.user_dob.lower() not in ["nan", "none", ""]:
                 try:
                     import pandas as pd
                     from datetime import datetime, timedelta
-                    
-                    # Convert the Google Sheet date string into a real Date
                     dob_dt = pd.to_datetime(st.session_state.user_dob, dayfirst=True)
-                    
-                    # Get exact current time in India (UTC + 5:30)
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                    
-                    # Check if the Day and Month match today!
                     if dob_dt.month == ist_now.month and dob_dt.day == ist_now.day:
-                        # Make sure balloons only play once so it doesn't get annoying
                         if "bday_celebrated" not in st.session_state:
                             st.balloons()
                             st.session_state.bday_celebrated = True
-                        
-                        # The beautiful gold Birthday Message box
                         st.markdown(f"""
                         <div style="background-color: rgba(255, 215, 0, 0.15); padding: 15px; border-radius: 10px; border: 2px solid gold; text-align: center; margin-bottom: 20px;">
                             <h2 style="color: gold; margin-top: 0px;">🎉 Happy Birthday, {st.session_state.user_name}! 🎂</h2>
                             <p style="font-size: 16px; margin-bottom: 0px;">Wishing you a fantastic day and a wonderful year ahead! Keep shining and keep learning.<br><b>- Rishav Sir & The Wisdope Team</b></p>
                         </div>
                         """, unsafe_allow_html=True)
-                except Exception as e:
-                    pass # Fails silently if the date format was typed incorrectly in the sheet
+                except Exception:
+                    pass
             
             st.write("---")
             
@@ -563,8 +578,7 @@ with tab6:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 m_df = conn.read(worksheet="Materials", ttl=0) 
-                if 'Chapter' not in m_df.columns:
-                    m_df['Chapter'] = "General"
+                if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
                     
                 c_mat = m_df[m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
                 student_subs = sorted(list(set(c_mat["Subject"].tolist() if not c_mat.empty else [])))
@@ -576,47 +590,36 @@ with tab6:
                     if sel_sub:
                         sub_match = c_mat[c_mat["Subject"] == sel_sub]
                         chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
-                        
                         sel_chap = st.selectbox("2. Choose a chapter/topic:", chapter_list)
-                        
                         if sel_chap:
                             final_match = sub_match[sub_match["Chapter"] == sel_chap]
                             if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
                                 st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
                             else:
                                 st.info("Materials for this chapter are coming soon!")
-            except Exception as e:
+            except Exception:
                 st.error("Database Error. Please contact Rishav Sir.")
             
             st.write("---")
             st.subheader("📢 Notice Board")
-            
+            st.write("If using an Android device use desktop mode for better view of the notice board")
             notice_url = st.secrets["admin"]["notice_board"]
             st.markdown(
                 f'''
                 <style>
-                .notice-wrapper {{
-                    display: flex; justify-content: center; width: 100%; margin-bottom: 20px;
-                }}
-                .notice-iframe {{
-                    width: 100%; max-width: 700px; height: 250px; 
-                    border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; 
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.5); background-color: #595959; 
-                    overflow-y: scroll !important; -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain;
-                }}
+                .notice-wrapper {{ display: flex; justify-content: center; width: 100%; margin-bottom: 20px; }}
+                .notice-iframe {{ width: 100%; max-width: 700px; height: 250px; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); background-color: #595959; overflow-y: scroll !important; -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain; }}
                 @media (min-width: 768px) {{ .notice-iframe {{ height: 380px; }} }}
                 </style>
                 <div class="notice-wrapper">
                     <iframe class="notice-iframe" src="{notice_url}" scrolling="yes"></iframe>
                 </div>
-                ''', 
-                unsafe_allow_html=True
+                ''', unsafe_allow_html=True
             )
 
         if st.button("Log Out"):
             st.session_state.logged_in = False
-            st.rerun()
-                        
+            st.rerun()                        
             
 st.divider()
 # ==========================================
