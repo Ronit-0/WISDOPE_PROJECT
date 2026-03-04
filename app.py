@@ -505,7 +505,8 @@ else:
                         conn.update(worksheet="News", data=empty_news)
                         st.success("✅ News banner removed immediately!")
                     except Exception as e:
-       with admin_tab5:
+                       st.error(f"Database Error: {e}")
+        with admin_tab5:
                 st.subheader("🌟 Update Star Student")
                 st.write("Feature a top-performing student on the public Leaderboard.")
                 
@@ -540,7 +541,7 @@ else:
                             conn.update(worksheet="Leaderboard", data=empty_leader)
                             st.success("✅ Leaderboard has been cleared and hidden from the public.")
                         except Exception as e:
-                            st.error(f"Database Error: {e}")                 st.error(f"Database Error: {e}")
+                            st.error(f"Database Error: {e}")
 
     # ------------------------------------------
     #            STUDENT DASHBOARD
