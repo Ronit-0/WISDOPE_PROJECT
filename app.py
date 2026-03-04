@@ -332,7 +332,8 @@ else:
     #             ADMIN DASHBOARD
     # ------------------------------------------
     if st.session_state.user_class == "ADMIN":
-        admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory", "🚨 Urgent News"])
+        # Change this line:
+            admin_tab1, admin_tab2, admin_tab3, admin_tab4, admin_tab5 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory", "🚨 Urgent News", "🏆 Star Student"])
 
         with admin_tab1:
             st.write("Add new subjects, chapters, and PDF/Video links here.")
@@ -504,7 +505,42 @@ else:
                         conn.update(worksheet="News", data=empty_news)
                         st.success("✅ News banner removed immediately!")
                     except Exception as e:
-                        st.error(f"Database Error: {e}")
+       with admin_tab5:
+                st.subheader("🌟 Update Star Student")
+                st.write("Feature a top-performing student on the public Leaderboard.")
+                
+                star_input = st.text_input("Student Name (e.g., Ronit Das):")
+                batch_input = st.text_input("Batch/Class (e.g., Class XII):")
+                msg_input = st.text_area("Achievement / Custom Message (e.g., 'Highest score in the Physics mock test! Keep up the great work.'):")
+                
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    if st.button("🏅 Publish Star Student", type="primary"):
+                        if star_input and batch_input:
+                            try:
+                                import pandas as pd
+                                from streamlit_gsheets import GSheetsConnection
+                                conn = st.connection("gsheets", type=GSheetsConnection)
+                                
+                                new_leader = pd.DataFrame([{"Name": star_input, "Batch": batch_input, "Message": msg_input}])
+                                conn.update(worksheet="Leaderboard", data=new_leader)
+                                st.success(f"✅ {star_input} is now live on the public Leaderboard!")
+                            except Exception as e:
+                                st.error(f"Database Error: {e}")
+                        else:
+                            st.warning("Please enter at least the Student Name and Batch.")
+                with col_b:
+                    if st.button("🗑️ Hide Leaderboard"):
+                        try:
+                            import pandas as pd
+                            from streamlit_gsheets import GSheetsConnection
+                            conn = st.connection("gsheets", type=GSheetsConnection)
+                            
+                            empty_leader = pd.DataFrame([{"Name": "", "Batch": "", "Message": ""}])
+                            conn.update(worksheet="Leaderboard", data=empty_leader)
+                            st.success("✅ Leaderboard has been cleared and hidden from the public.")
+                        except Exception as e:
+                            st.error(f"Database Error: {e}")                 st.error(f"Database Error: {e}")
 
     # ------------------------------------------
     #            STUDENT DASHBOARD
