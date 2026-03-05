@@ -89,7 +89,15 @@ if "logged_in" not in st.session_state:
 # ==========================================
 if not st.session_state.logged_in:
     # --- ADDED THE LEADERBOARD TAB HERE ---
-    tab1, tab2, tab3, tab_leader, tab4, tab5, tab6 = st.tabs(["Why Join Us?", "Course Details", "Gallery", "🏆 Leaderboard", "Contact & Location", "Join Wisdope" , "Student Login"])
+    tab1, tab2, tab3, tab_leader, tab4, tab5, tab6 = st.tabs([
+        "🌟 Why Join Us?", 
+        "📚 Course Details", 
+        "📸 Gallery", 
+        "🏆 Leaderboard", 
+        "📍 Contact & Location", 
+        "🚀 Join Wisdope", 
+        "🔐 Student Login"
+    ])
 
     with tab1:
         st.header("Why join WISDOPE?")
