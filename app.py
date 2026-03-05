@@ -590,6 +590,7 @@ else:
     else:
         st.write(f"🎓 **Batch:** {st.session_state.user_class}")
         
+        # --- Birthday Surprise Logic ---
         if st.session_state.get("user_dob") and st.session_state.user_dob.lower() not in ["nan", "none", ""]:
             try:
                 import pandas as pd
@@ -611,48 +612,121 @@ else:
         
         st.write("---")
         
-        try:
-            from streamlit_gsheets import GSheetsConnection
-            conn = st.connection("gsheets", type=GSheetsConnection)
-            m_df = conn.read(worksheet="Materials", ttl=0) 
-            if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
+        # --- NEW: STUDENT TABS ---
+        stud_tab1, stud_tab2, stud_tab3 = st.tabs(["📚 Study Materials", "🧠 Brain Drive", "📢 Notice Board"])
+        
+        # --- TAB 1: STUDY MATERIALS ---
+        with stud_tab1:
+            try:
+                from streamlit_gsheets import GSheetsConnection
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                m_df = conn.read(worksheet="Materials", ttl=0) 
+                if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
+                    
+                c_mat = m_df[m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
+                student_subs = sorted(list(set(c_mat["Subject"].tolist() if not c_mat.empty else [])))
                 
-            c_mat = m_df[m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
-            student_subs = sorted(list(set(c_mat["Subject"].tolist() if not c_mat.empty else [])))
+                if not student_subs:
+                    st.info("No materials available for your class yet.")
+                else:
+                    sel_sub = st.selectbox("1. Choose a subject:", student_subs)
+                    if sel_sub:
+                        sub_match = c_mat[c_mat["Subject"] == sel_sub]
+                        chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
+                        sel_chap = st.selectbox("2. Choose a chapter/topic:", chapter_list)
+                        if sel_chap:
+                            final_match = sub_match[sub_match["Chapter"] == sel_chap]
+                            if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
+                                st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
+                            else:
+                                st.info("Materials for this chapter are coming soon!")
+            except Exception:
+                st.error("Database Error. Please contact Rishav Sir.")
+
+        # --- TAB 2: BRAIN DRIVE (THE QUIZ ENGINE) ---
+        with stud_tab2:
+            st.subheader("🧠 Welcome to Brain Drive")
+            st.write("Test your knowledge! You will be given 10 random questions. Good luck!")
             
-            if not student_subs:
-                st.info("No materials available for your class yet.")
-            else:
-                sel_sub = st.selectbox("1. Choose a subject:", student_subs)
-                if sel_sub:
-                    sub_match = c_mat[c_mat["Subject"] == sel_sub]
-                    chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
-                    sel_chap = st.selectbox("2. Choose a chapter/topic:", chapter_list)
-                    if sel_chap:
-                        final_match = sub_match[sub_match["Chapter"] == sel_chap]
-                        if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
-                            st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
-                        else:
-                            st.info("Materials for this chapter are coming soon!")
-        except Exception:
-            st.error("Database Error. Please contact Rishav Sir.")
-        
-        st.write("---")
-        st.subheader("📢 Notice Board")
-        
-        notice_url = st.secrets["admin"]["notice_board"]
-        st.markdown(
-            f'''
-            <style>
-            .notice-wrapper {{ display: flex; justify-content: center; width: 100%; margin-bottom: 20px; }}
-            .notice-iframe {{ width: 100%; max-width: 700px; height: 250px; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); background-color: #595959; overflow-y: scroll !important; -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain; }}
-            @media (min-width: 768px) {{ .notice-iframe {{ height: 380px; }} }}
-            </style>
-            <div class="notice-wrapper">
-                <iframe class="notice-iframe" src="{notice_url}" scrolling="yes"></iframe>
-            </div>
-            ''', unsafe_allow_html=True
-        )
+            try:
+                from streamlit_gsheets import GSheetsConnection
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                quiz_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                
+                # Check if the database has questions
+                if not quiz_df.empty and "Question" in quiz_df.columns:
+                    
+                    # 1. Initialize the quiz memory so questions don't shuffle while answering!
+                    if 'quiz_questions' not in st.session_state:
+                        # Pick 10 random questions (or fewer if there aren't 10 yet)
+                        sample_size = min(10, len(quiz_df))
+                        st.session_state.quiz_questions = quiz_df.sample(n=sample_size).to_dict('records')
+                        st.session_state.quiz_submitted = False
+                        st.session_state.score = 0
+                    
+                    # 2. Show the test if it hasn't been submitted yet
+                    if not st.session_state.quiz_submitted:
+                        with st.form("quiz_form"):
+                            user_answers = {}
+                            
+                            for i, q in enumerate(st.session_state.quiz_questions):
+                                st.write(f"**Q{i+1}: {q['Question']}**")
+                                options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
+                                # Clean out any 'nan' options in case Rishav Sir left one blank
+                                options = [opt for opt in options if opt.lower() != 'nan']
+                                
+                                user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
+                                st.write("---")
+                                
+                            submitted = st.form_submit_button("Submit Exam", type="primary")
+                            
+                            if submitted:
+                                score = 0
+                                for i, q in enumerate(st.session_state.quiz_questions):
+                                    correct_ans = str(q['Correct Answer']).strip().lower()
+                                    chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
+                                    
+                                    if chosen_ans == correct_ans:
+                                        score += 1
+                                        
+                                st.session_state.score = score
+                                st.session_state.quiz_submitted = True
+                                st.rerun() # Refresh the page to show the score
+                    
+                    # 3. Show the results!
+                    else:
+                        st.success(f"🎉 Exam Complete! You scored **{st.session_state.score}** out of {len(st.session_state.quiz_questions)}!")
+                        if st.session_state.score >= (len(st.session_state.quiz_questions) * 0.8):
+                            st.balloons() # Give them balloons if they score 80% or higher!
+                            
+                        if st.button("🔄 Retake Brain Drive"):
+                            # Delete the memory so it picks 10 brand new random questions
+                            del st.session_state.quiz_questions
+                            del st.session_state.quiz_submitted
+                            st.rerun()
+                            
+                else:
+                    st.info("The Brain Drive is currently empty. Rishav Sir will upload questions soon!")
+                    
+            except Exception as e:
+                st.info("The Brain Drive module is being setup! Check back later.")
+
+        # --- TAB 3: NOTICE BOARD ---
+        with stud_tab3:
+            st.subheader("📢 Notice Board")
+            notice_url = st.secrets["admin"]["notice_board"]
+            st.markdown(
+                f'''
+                <style>
+                .notice-wrapper {{ display: flex; justify-content: center; width: 100%; margin-bottom: 20px; }}
+                .notice-iframe {{ width: 100%; max-width: 700px; height: 250px; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); background-color: #595959; overflow-y: scroll !important; -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain; }}
+                @media (min-width: 768px) {{ .notice-iframe {{ height: 380px; }} }}
+                </style>
+                <div class="notice-wrapper">
+                    <iframe class="notice-iframe" src="{notice_url}" scrolling="yes"></iframe>
+                </div>
+                ''', unsafe_allow_html=True
+            )
 # ==========================================
 #               GLOBAL FOOTER
 # ==========================================
