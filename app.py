@@ -81,8 +81,47 @@ try:
 except Exception:
     pass 
 
+# ==========================================
+#       PERSISTENT SESSION MANAGER (10 MIN)
+# ==========================================
+import time
+import json
+import base64
+
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+
+# 1. Restore login if they refreshed the page within the 10-minute window
+if not st.session_state.logged_in and "session_token" in st.query_params:
+    try:
+        token = st.query_params["session_token"]
+        decoded_bytes = base64.b64decode(token.encode('utf-8'))
+        session_data = json.loads(decoded_bytes.decode('utf-8'))
+        
+        # Check if current time is still before the expiry time
+        if time.time() < session_data["expiry"]:
+            st.session_state.logged_in = True
+            st.session_state.user_name = session_data["name"]
+            st.session_state.user_class = session_data["class"]
+            st.session_state.user_dob = session_data.get("dob", "")
+        else:
+            # 10 minutes passed! Delete the token so they stay logged out
+            del st.query_params["session_token"]
+    except:
+        del st.query_params["session_token"]
+
+# 2. Keep refreshing the 10-minute timer as long as they are active
+if st.session_state.logged_in:
+    expiry_time = time.time() + 600 # 600 seconds = 10 minutes
+    session_data = {
+        "name": st.session_state.user_name,
+        "class": st.session_state.user_class,
+        "dob": st.session_state.get("user_dob", ""),
+        "expiry": expiry_time
+    }
+    # Encode it so it looks like a professional, secure token in the URL
+    token_bytes = json.dumps(session_data).encode('utf-8')
+    st.query_params["session_token"] = base64.b64encode(token_bytes).decode('utf-8')
 
 # ==========================================
 #               PUBLIC WEBSITE
@@ -344,6 +383,9 @@ else:
     with top_col2:
         if st.button("🚪 Log Out", type="primary", use_container_width=True):
             st.session_state.logged_in = False
+            # Destroy the URL token instantly
+            if "session_token" in st.query_params:
+                del st.query_params["session_token"]
             st.rerun()
             
     st.write("---")
