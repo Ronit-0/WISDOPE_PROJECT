@@ -911,6 +911,7 @@ else:
             # --- TAB 3: NOTICE BOARD ---
             with stud_tab3:
                 st.subheader("📢 Notice Board")
+                st.write("If using samrtphone use desktop site for better view")
                 notice_url = st.secrets["admin"]["notice_board"]
                 st.markdown(
                     f'''
