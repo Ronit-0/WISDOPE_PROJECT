@@ -352,7 +352,9 @@ else:
     #             ADMIN DASHBOARD
     # ------------------------------------------
     if st.session_state.user_class == "ADMIN":
-        admin_tab1, admin_tab2, admin_tab3, admin_tab4, admin_tab5 = st.tabs(["📚 Study Materials", "📸 Photo Gallery", "💬 Student Directory", "🚨 Urgent News", "🏆 Star Student"])
+        admin_tab1, admin_tab2, admin_tab3, admin_tab4, admin_tab5, admin_tab6 = st.tabs([
+            "📚 Materials", "📸 Gallery", "💬 Directory", "🚨 News", "🏆 Star Student", "🧠 Manage Exams"
+        ])
 
         with admin_tab1:
             st.write("Add new subjects, chapters, and PDF/Video links here.")
@@ -533,8 +535,6 @@ else:
             star_input = st.text_input("Student Name (e.g., Ronit Das):")
             batch_input = st.text_input("Batch/Class (e.g., Class XII):")
             msg_input = st.text_area("Achievement / Custom Message (e.g., 'Highest score in the Physics mock test!'):")
-            
-            # --- NEW: Image Uploader for Leaderboard ---
             star_photo = st.file_uploader("Upload Student Photo (Optional)", type=["jpg", "jpeg", "png"])
             
             col_a, col_b = st.columns(2)
@@ -550,7 +550,6 @@ else:
                                 
                                 img_url = ""
                                 if star_photo:
-                                    # Safely upload the image to ImgBB
                                     payload = {
                                         "key": st.secrets["IMGBB_API_KEY"],
                                         "image": base64.b64encode(star_photo.getvalue()).decode('utf-8')
@@ -584,13 +583,55 @@ else:
                     except Exception as e:
                         st.error(f"Database Error: {e}")
 
+        # --- NEW: EXAM ADMIN PANEL ---
+        with admin_tab6:
+            st.subheader("🧠 Deploy Brain Drive Exam")
+            try:
+                from streamlit_gsheets import GSheetsConnection
+                import pandas as pd
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                
+                # Fetch available subjects from the question bank
+                brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                available_subjects = brain_df["Subject"].dropna().unique().tolist() if "Subject" in brain_df.columns else []
+                
+                if available_subjects:
+                    with st.form("deploy_exam"):
+                        st.write("**Exam Configuration**")
+                        exam_sub = st.selectbox("Select Subject to Test:", available_subjects)
+                        exam_time = st.number_input("Time Limit (Minutes):", min_value=1, max_value=60, value=20)
+                        exam_retake = st.checkbox("Allow students to retake the exam multiple times?", value=False)
+                        
+                        if st.form_submit_button("🚀 Deploy Exam to Students", type="primary"):
+                            settings = pd.DataFrame([{"Status": "Active", "Subject": exam_sub, "Duration": exam_time, "Retake": str(exam_retake)}])
+                            conn.update(worksheet="Exam_Settings", data=settings)
+                            st.success(f"✅ Exam Deployed! Students will now see the {exam_sub} exam in their portal.")
+                            st.rerun()
+                else:
+                    st.warning("No subjects found in the 'Brain_Drive' sheet. Please add questions first!")
+                
+                if st.button("🛑 Stop Active Exam"):
+                    conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Subject": "", "Duration": "", "Retake": ""}]))
+                    st.success("Exam has been removed from student portals.")
+                    st.rerun()
+
+                st.write("---")
+                st.subheader("📊 Live Exam Scores")
+                scores_df = conn.read(worksheet="Scores", ttl=0)
+                if not scores_df.empty and "Name" in scores_df.columns:
+                    st.dataframe(scores_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No scores recorded yet.")
+            except Exception as e:
+                st.error(f"Please create the 'Exam_Settings' and 'Scores' sheets first. Error: {e}")
+
+
     # ------------------------------------------
     #            STUDENT DASHBOARD
     # ------------------------------------------
     else:
         st.write(f"🎓 **Batch:** {st.session_state.user_class}")
         
-        # --- Birthday Surprise Logic ---
         if st.session_state.get("user_dob") and st.session_state.user_dob.lower() not in ["nan", "none", ""]:
             try:
                 import pandas as pd
@@ -612,7 +653,6 @@ else:
         
         st.write("---")
         
-        # --- NEW: STUDENT TABS ---
         stud_tab1, stud_tab2, stud_tab3 = st.tabs(["📚 Study Materials", "🧠 Brain Drive", "📢 Notice Board"])
         
         # --- TAB 1: STUDY MATERIALS ---
@@ -643,73 +683,112 @@ else:
             except Exception:
                 st.error("Database Error. Please contact Rishav Sir.")
 
-        # --- TAB 2: BRAIN DRIVE (THE QUIZ ENGINE) ---
+        # --- TAB 2: BRAIN DRIVE EXAM ENGINE ---
         with stud_tab2:
-            st.subheader("🧠 Welcome to Brain Drive")
-            st.write("Test your knowledge! You will be given 10 random questions. Good luck!")
+            st.subheader("🧠 Brain Drive")
             
             try:
                 from streamlit_gsheets import GSheetsConnection
+                import pandas as pd
+                from datetime import datetime, timedelta
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                quiz_df = conn.read(worksheet="Brain_Drive", ttl=0)
                 
-                # Check if the database has questions
-                if not quiz_df.empty and "Question" in quiz_df.columns:
+                # Check Exam Status
+                settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
+                if not settings_df.empty and str(settings_df.iloc[0]["Status"]) == "Active":
+                    active_sub = str(settings_df.iloc[0]["Subject"])
+                    time_limit = int(settings_df.iloc[0]["Duration"])
+                    allow_retake = str(settings_df.iloc[0]["Retake"]).lower() == "true"
                     
-                    # 1. Initialize the quiz memory so questions don't shuffle while answering!
-                    if 'quiz_questions' not in st.session_state:
-                        # Pick 10 random questions (or fewer if there aren't 10 yet)
-                        sample_size = min(10, len(quiz_df))
-                        st.session_state.quiz_questions = quiz_df.sample(n=sample_size).to_dict('records')
-                        st.session_state.quiz_submitted = False
-                        st.session_state.score = 0
+                    st.info(f"📝 **New Exam Assigned:** {active_sub} | ⏱️ **Time Limit:** {time_limit} Minutes")
                     
-                    # 2. Show the test if it hasn't been submitted yet
-                    if not st.session_state.quiz_submitted:
-                        with st.form("quiz_form"):
-                            user_answers = {}
-                            
-                            for i, q in enumerate(st.session_state.quiz_questions):
-                                st.write(f"**Q{i+1}: {q['Question']}**")
-                                options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
-                                # Clean out any 'nan' options in case Rishav Sir left one blank
-                                options = [opt for opt in options if opt.lower() != 'nan']
-                                
-                                user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
-                                st.write("---")
-                                
-                            submitted = st.form_submit_button("Submit Exam", type="primary")
-                            
-                            if submitted:
-                                score = 0
-                                for i, q in enumerate(st.session_state.quiz_questions):
-                                    correct_ans = str(q['Correct Answer']).strip().lower()
-                                    chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
-                                    
-                                    if chosen_ans == correct_ans:
-                                        score += 1
-                                        
-                                st.session_state.score = score
-                                st.session_state.quiz_submitted = True
-                                st.rerun() # Refresh the page to show the score
+                    # Prevent multiple submissions if retake is off
+                    scores_df = conn.read(worksheet="Scores", ttl=0)
+                    already_taken = False
+                    if not scores_df.empty and "Name" in scores_df.columns:
+                        mask = (scores_df["Name"] == st.session_state.user_name) & (scores_df["Subject"] == active_sub)
+                        if mask.any(): already_taken = True
+
+                    if already_taken and not allow_retake:
+                        st.warning("You have already completed this exam. Retakes are currently disabled by Rishav Sir.")
                     
-                    # 3. Show the results!
                     else:
-                        st.success(f"🎉 Exam Complete! You scored **{st.session_state.score}** out of {len(st.session_state.quiz_questions)}!")
-                        if st.session_state.score >= (len(st.session_state.quiz_questions) * 0.8):
-                            st.balloons() # Give them balloons if they score 80% or higher!
+                        # Exam Initialization
+                        if 'exam_active' not in st.session_state:
+                            st.session_state.exam_active = False
                             
-                        if st.button("🔄 Retake Brain Drive"):
-                            # Delete the memory so it picks 10 brand new random questions
-                            del st.session_state.quiz_questions
-                            del st.session_state.quiz_submitted
-                            st.rerun()
+                        # Start Screen
+                        if not st.session_state.exam_active:
+                            st.write(f"When you are ready, click Start. You will have {time_limit} minutes to complete 10 random questions.")
+                            if st.button("🚀 Start Exam", type="primary"):
+                                brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                                subject_questions = brain_df[brain_df["Subject"] == active_sub]
+                                
+                                if len(subject_questions) > 0:
+                                    sample_size = min(10, len(subject_questions))
+                                    st.session_state.exam_questions = subject_questions.sample(n=sample_size).to_dict('records')
+                                    st.session_state.exam_active = True
+                                    
+                                    # Record precise Indian Standard Time
+                                    ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                                    st.session_state.exam_start_time = ist_now
+                                    st.rerun()
+                                else:
+                                    st.error("Error: No questions found for this subject.")
+                        
+                        # Active Exam Screen
+                        else:
+                            st.error(f"⏳ **TIMER RUNNING** - Please submit within {time_limit} minutes!")
                             
+                            with st.form("exam_form"):
+                                user_answers = {}
+                                for i, q in enumerate(st.session_state.exam_questions):
+                                    st.write(f"**Q{i+1}: {q['Question']}**")
+                                    options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
+                                    options = [opt for opt in options if opt.lower() != 'nan']
+                                    
+                                    user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
+                                    st.write("---")
+                                    
+                                submitted = st.form_submit_button("Submit Exam", type="primary")
+                                
+                                if submitted:
+                                    ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                                    
+                                    # Calculate Score
+                                    score = 0
+                                    total_q = len(st.session_state.exam_questions)
+                                    for i, q in enumerate(st.session_state.exam_questions):
+                                        correct_ans = str(q['Correct Answer']).strip().lower()
+                                        chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
+                                        if chosen_ans == correct_ans: score += 1
+                                            
+                                    percentage = round((score / total_q) * 100, 2)
+                                    
+                                    # Save to Database
+                                    new_score = pd.DataFrame([{
+                                        "Name": st.session_state.user_name,
+                                        "Batch": st.session_state.user_class,
+                                        "Subject": active_sub,
+                                        "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
+                                        "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
+                                        "Score": f"{score}/{total_q}",
+                                        "Percentage": f"{percentage}%"
+                                    }])
+                                    
+                                    updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
+                                    conn.update(worksheet="Scores", data=updated_scores)
+                                    
+                                    st.session_state.exam_active = False
+                                    del st.session_state.exam_questions
+                                    
+                                    st.success(f"✅ Exam Submitted Successfully! You scored {score}/{total_q} ({percentage}%).")
+                                    st.rerun()
                 else:
-                    st.info("The Brain Drive is currently empty. Rishav Sir will upload questions soon!")
+                    st.info("No active exams right now. Take a break and study your materials!")
                     
             except Exception as e:
-                st.info("The Brain Drive module is being setup! Check back later.")
+                st.info("The Brain Drive module is being setup by Rishav Sir. Check back later.")
 
         # --- TAB 3: NOTICE BOARD ---
         with stud_tab3:
@@ -726,8 +805,7 @@ else:
                     <iframe class="notice-iframe" src="{notice_url}" scrolling="yes"></iframe>
                 </div>
                 ''', unsafe_allow_html=True
-            )
-# ==========================================
+            )# ==========================================
 #               GLOBAL FOOTER
 # ==========================================
 st.divider()
