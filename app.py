@@ -583,38 +583,66 @@ else:
                     except Exception as e:
                         st.error(f"Database Error: {e}")
 
-        # --- NEW: EXAM ADMIN PANEL ---
+        # --- NEW: UPGRADED EXAM ADMIN PANEL ---
         with admin_tab6:
             st.subheader("🧠 Deploy Brain Drive Exam")
             try:
                 from streamlit_gsheets import GSheetsConnection
                 import pandas as pd
+                from datetime import datetime, timedelta
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 
-                # Fetch available subjects from the question bank
+                ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
+                
+                # Check for currently active exams and show countdown for the link
+                if not settings_df.empty and str(settings_df.iloc[0]["Status"]) == "Active":
+                    exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
+                    try:
+                        exp_dt = pd.to_datetime(exp_str)
+                        if ist_now < exp_dt:
+                            rem_mins = int((exp_dt - ist_now).total_seconds() / 60)
+                            st.markdown(f"""
+                            <div style="background-color: rgba(0, 255, 0, 0.1); border: 2px solid #00FF00; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <h3 style="color: #00FF00; margin-top: 0px;">✅ ACTIVE EXAM: {settings_df.iloc[0]["Subject"]}</h3>
+                                <p style="font-size: 16px; margin-bottom: 0px;">Link disappears from student portals in: <b>{rem_mins} Minutes</b> (At {exp_dt.strftime('%I:%M %p')})</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if st.button("🛑 Force Stop Exam Early"):
+                                conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Subject": "", "Duration": "", "Retake": "", "Expires_At": ""}]))
+                                st.rerun()
+                    except:
+                        pass
+                
+                st.write("---")
+                # Fetch available subjects
                 brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
                 available_subjects = brain_df["Subject"].dropna().unique().tolist() if "Subject" in brain_df.columns else []
                 
                 if available_subjects:
                     with st.form("deploy_exam"):
-                        st.write("**Exam Configuration**")
+                        st.write("**Deploy a New Exam**")
                         exam_sub = st.selectbox("Select Subject to Test:", available_subjects)
-                        exam_time = st.number_input("Time Limit (Minutes):", min_value=1, max_value=60, value=20)
-                        exam_retake = st.checkbox("Allow students to retake the exam multiple times?", value=False)
+                        exam_time = st.number_input("Time limit for student to write (Minutes):", min_value=1, max_value=60, value=20)
+                        exam_window = st.number_input("How long should the exam link stay open? (Minutes):", min_value=1, max_value=1440, value=60)
+                        exam_retake = st.checkbox("Allow students to retake the exam?", value=False)
                         
-                        if st.form_submit_button("🚀 Deploy Exam to Students", type="primary"):
-                            settings = pd.DataFrame([{"Status": "Active", "Subject": exam_sub, "Duration": exam_time, "Retake": str(exam_retake)}])
+                        if st.form_submit_button("🚀 Deploy Exam", type="primary"):
+                            expires_at = ist_now + timedelta(minutes=exam_window)
+                            settings = pd.DataFrame([{
+                                "Status": "Active", 
+                                "Subject": exam_sub, 
+                                "Duration": exam_time, 
+                                "Retake": str(exam_retake),
+                                "Expires_At": expires_at.strftime("%Y-%m-%d %H:%M:%S")
+                            }])
                             conn.update(worksheet="Exam_Settings", data=settings)
-                            st.success(f"✅ Exam Deployed! Students will now see the {exam_sub} exam in their portal.")
+                            st.success(f"✅ Exam Deployed Successfully! It will automatically vanish at {expires_at.strftime('%I:%M %p')}.")
                             st.rerun()
                 else:
                     st.warning("No subjects found in the 'Brain_Drive' sheet. Please add questions first!")
                 
-                if st.button("🛑 Stop Active Exam"):
-                    conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Subject": "", "Duration": "", "Retake": ""}]))
-                    st.success("Exam has been removed from student portals.")
-                    st.rerun()
-
                 st.write("---")
                 st.subheader("📊 Live Exam Scores")
                 scores_df = conn.read(worksheet="Scores", ttl=0)
@@ -655,7 +683,6 @@ else:
         
         stud_tab1, stud_tab2, stud_tab3 = st.tabs(["📚 Study Materials", "🧠 Brain Drive", "📢 Notice Board"])
         
-        # --- TAB 1: STUDY MATERIALS ---
         with stud_tab1:
             try:
                 from streamlit_gsheets import GSheetsConnection
@@ -683,7 +710,7 @@ else:
             except Exception:
                 st.error("Database Error. Please contact Rishav Sir.")
 
-        # --- TAB 2: BRAIN DRIVE EXAM ENGINE ---
+        # --- TAB 2: UPGRADED BRAIN DRIVE EXAM ENGINE ---
         with stud_tab2:
             st.subheader("🧠 Brain Drive")
             
@@ -691,17 +718,28 @@ else:
                 from streamlit_gsheets import GSheetsConnection
                 import pandas as pd
                 from datetime import datetime, timedelta
-                conn = st.connection("gsheets", type=GSheetsConnection)
+                import streamlit.components.v1 as components
                 
-                # Check Exam Status
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                
+                # Check Exam Status and Expiration
                 settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
+                exam_available = False
+                
                 if not settings_df.empty and str(settings_df.iloc[0]["Status"]) == "Active":
-                    active_sub = str(settings_df.iloc[0]["Subject"])
-                    time_limit = int(settings_df.iloc[0]["Duration"])
-                    allow_retake = str(settings_df.iloc[0]["Retake"]).lower() == "true"
-                    
-                    st.info(f"📝 **New Exam Assigned:** {active_sub} | ⏱️ **Time Limit:** {time_limit} Minutes")
-                    
+                    exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
+                    try:
+                        exp_dt = pd.to_datetime(exp_str)
+                        if ist_now < exp_dt:
+                            exam_available = True
+                            active_sub = str(settings_df.iloc[0]["Subject"])
+                            time_limit = int(settings_df.iloc[0]["Duration"])
+                            allow_retake = str(settings_df.iloc[0]["Retake"]).lower() == "true"
+                    except:
+                        pass
+
+                if exam_available:
                     # Prevent multiple submissions if retake is off
                     scores_df = conn.read(worksheet="Scores", ttl=0)
                     already_taken = False
@@ -713,13 +751,14 @@ else:
                         st.warning("You have already completed this exam. Retakes are currently disabled by Rishav Sir.")
                     
                     else:
-                        # Exam Initialization
                         if 'exam_active' not in st.session_state:
                             st.session_state.exam_active = False
                             
                         # Start Screen
                         if not st.session_state.exam_active:
-                            st.write(f"When you are ready, click Start. You will have {time_limit} minutes to complete 10 random questions.")
+                            st.info(f"📝 **New Exam Assigned:** {active_sub} | ⏱️ **Time Limit:** {time_limit} Minutes")
+                            st.write("When you are ready, click Start. The timer will begin immediately.")
+                            
                             if st.button("🚀 Start Exam", type="primary"):
                                 brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
                                 subject_questions = brain_df[brain_df["Subject"] == active_sub]
@@ -728,62 +767,108 @@ else:
                                     sample_size = min(10, len(subject_questions))
                                     st.session_state.exam_questions = subject_questions.sample(n=sample_size).to_dict('records')
                                     st.session_state.exam_active = True
-                                    
-                                    # Record precise Indian Standard Time
-                                    ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                                     st.session_state.exam_start_time = ist_now
                                     st.rerun()
                                 else:
                                     st.error("Error: No questions found for this subject.")
                         
-                        # Active Exam Screen
+                        # Active Exam Screen with LIVE TIMER
                         else:
-                            st.error(f"⏳ **TIMER RUNNING** - Please submit within {time_limit} minutes!")
+                            end_time = st.session_state.exam_start_time + timedelta(minutes=time_limit)
+                            rem_sec = int((end_time - ist_now).total_seconds())
                             
-                            with st.form("exam_form"):
-                                user_answers = {}
-                                for i, q in enumerate(st.session_state.exam_questions):
-                                    st.write(f"**Q{i+1}: {q['Question']}**")
-                                    options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
-                                    options = [opt for opt in options if opt.lower() != 'nan']
-                                    
-                                    user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
-                                    st.write("---")
-                                    
-                                submitted = st.form_submit_button("Submit Exam", type="primary")
+                            if rem_sec > 0:
+                                # Inject beautiful live Javascript countdown
+                                timer_html = f"""
+                                <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
+                                    ⏳ <span id="timer">{rem_sec // 60:02d}:{rem_sec % 60:02d}</span>
+                                </div>
+                                <script>
+                                    var timeleft = {rem_sec};
+                                    var timerInterval = setInterval(function() {{
+                                        timeleft--;
+                                        if (timeleft <= 0) {{
+                                            clearInterval(timerInterval);
+                                            document.getElementById("timer").innerHTML = "00:00 (TIME UP!)";
+                                        }} else {{
+                                            var m = Math.floor(timeleft / 60);
+                                            var s = timeleft % 60;
+                                            document.getElementById("timer").innerHTML = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+                                        }}
+                                    }}, 1000);
+                                </script>
+                                """
+                                components.html(timer_html, height=75)
                                 
-                                if submitted:
-                                    ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                                    
-                                    # Calculate Score
-                                    score = 0
-                                    total_q = len(st.session_state.exam_questions)
+                                with st.form("exam_form"):
+                                    user_answers = {}
                                     for i, q in enumerate(st.session_state.exam_questions):
-                                        correct_ans = str(q['Correct Answer']).strip().lower()
-                                        chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
-                                        if chosen_ans == correct_ans: score += 1
-                                            
-                                    percentage = round((score / total_q) * 100, 2)
+                                        st.write(f"**Q{i+1}: {q['Question']}**")
+                                        options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
+                                        options = [opt for opt in options if opt.lower() != 'nan']
+                                        
+                                        user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
+                                        st.write("---")
+                                        
+                                    submitted = st.form_submit_button("Submit Exam", type="primary")
                                     
-                                    # Save to Database
+                                    if submitted:
+                                        ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                                        
+                                        # Verify if they submitted after time limit (giving a 15 second grace period)
+                                        is_late = (ist_submit - end_time).total_seconds() > 15
+                                        
+                                        score = 0
+                                        total_q = len(st.session_state.exam_questions)
+                                        for i, q in enumerate(st.session_state.exam_questions):
+                                            correct_ans = str(q['Correct Answer']).strip().lower()
+                                            chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
+                                            if chosen_ans == correct_ans: score += 1
+                                                
+                                        percentage = round((score / total_q) * 100, 2)
+                                        pct_str = f"{percentage}% (Late)" if is_late else f"{percentage}%"
+                                        
+                                        new_score = pd.DataFrame([{
+                                            "Name": st.session_state.user_name,
+                                            "Batch": st.session_state.user_class,
+                                            "Subject": active_sub,
+                                            "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
+                                            "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
+                                            "Score": f"{score}/{total_q}",
+                                            "Percentage": pct_str
+                                        }])
+                                        
+                                        updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
+                                        conn.update(worksheet="Scores", data=updated_scores)
+                                        
+                                        st.session_state.exam_active = False
+                                        del st.session_state.exam_questions
+                                        
+                                        if is_late:
+                                            st.warning(f"Exam Submitted Late. You scored {score}/{total_q} ({percentage}%).")
+                                        else:
+                                            st.success(f"✅ Exam Submitted Successfully! You scored {score}/{total_q} ({percentage}%).")
+                                        st.rerun()
+                            else:
+                                st.error("🚨 TIME IS UP! You must submit your exam immediately.")
+                                if st.button("Submit Now (Late)", type="primary"):
+                                    # Force simple submission with 0 score if they click late
+                                    ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
                                     new_score = pd.DataFrame([{
-                                        "Name": st.session_state.user_name,
-                                        "Batch": st.session_state.user_class,
-                                        "Subject": active_sub,
-                                        "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
-                                        "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
-                                        "Score": f"{score}/{total_q}",
-                                        "Percentage": f"{percentage}%"
-                                    }])
-                                    
+                                            "Name": st.session_state.user_name,
+                                            "Batch": st.session_state.user_class,
+                                            "Subject": active_sub,
+                                            "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
+                                            "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
+                                            "Score": "0 (Forced Auto-Submit)",
+                                            "Percentage": "0% (Late)"
+                                        }])
                                     updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                                     conn.update(worksheet="Scores", data=updated_scores)
-                                    
                                     st.session_state.exam_active = False
                                     del st.session_state.exam_questions
-                                    
-                                    st.success(f"✅ Exam Submitted Successfully! You scored {score}/{total_q} ({percentage}%).")
                                     st.rerun()
+
                 else:
                     st.info("No active exams right now. Take a break and study your materials!")
                     
@@ -805,7 +890,8 @@ else:
                     <iframe class="notice-iframe" src="{notice_url}" scrolling="yes"></iframe>
                 </div>
                 ''', unsafe_allow_html=True
-            )# ==========================================
+            )            
+# ==========================================
 #               GLOBAL FOOTER
 # ==========================================
 st.divider()
