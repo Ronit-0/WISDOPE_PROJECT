@@ -138,118 +138,7 @@ if not st.session_state.logged_in:
         "🚀 Join Wisdope", 
         "🔐 Student Login"
     ])
-    # --- NEW: ANIMATED WISDOPE TEAM TAB ---
-    with tab_team:
-        st.header("🤝 Meet the Wisdope Team")
-        st.write("The dedicated professionals working hard to bring you the best education.")
-        st.write("---")
-        
-        team_html = """
-        <style>
-        .team-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            padding: 10px;
-        }
-        .team-card {
-            background-color: #262626;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            border-top: 4px solid #FFD700;
-            width: 260px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .team-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(255, 215, 0, 0.15);
-        }
-        .team-img {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #FFD700;
-            margin-bottom: 15px;
-            background-color: #333333;
-            transition: transform 0.3s ease;
-        }
-        .team-card:hover .team-img {
-            transform: scale(1.05);
-        }
-        .team-name {
-            color: white;
-            font-size: 22px;
-            margin-bottom: 5px;
-            margin-top: 0;
-        }
-        .team-role {
-            color: #FFD700;
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 0px;
-            margin-top: 0;
-            transition: margin-bottom 0.4s ease;
-        }
-        .team-card:hover .team-role {
-            margin-bottom: 10px;
-        }
-        .team-desc {
-            color: #cccccc;
-            font-size: 14px;
-            line-height: 1.4;
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-            margin: 0;
-            transition: all 0.4s ease-in-out;
-        }
-        .team-card:hover .team-desc {
-            max-height: 150px;
-            opacity: 1;
-            margin-top: 5px;
-        }
-        </style>
-        <div class="team-container">
-            <div class="team-card">
-                <img class="team-img" src="https://raw.githubusercontent.com/Ronit-0/WISDOPE_PROJECT/main/images/IMG_8098.png" alt="Rishav Sir">
-                <h3 class="team-name">Rishav Karar</h3>
-                <p class="team-role">Founder & Lead Educator</p>
-                <p class="team-desc">R.A. (Pharmacognosy). 6+ years of teaching experience, guiding students to excellence.</p>
-            </div>
-            <div class="team-card">
-                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/stethoscope.png" alt="Doctor">
-                <h3 class="team-name">Soumyadeep Mondal</h3>
-                <p class="team-role">Medical Advisor</p>
-                <p class="team-desc">Doctor at Jadavpur Hospital. Bringing real-world medical insights and expert guidance.</p>
-            </div>
-            <div class="team-card">
-                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/manager.png" alt="Secretary">
-                <h3 class="team-name">Gouranga Biswas</h3>
-                <p class="team-role">Academy Secretary</p>
-                <p class="team-desc">Managing operations, administration, and ensuring the academy runs smoothly day-to-day.</p>
-            </div>
-            <div class="team-card">
-                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/commercial.png" alt="Media Consultant">
-                <h3 class="team-name">Suhina Karar</h3>
-                <p class="team-role">Media Consultant</p>
-                <p class="team-desc">Handling social media, digital presence, and connecting Wisdope Academy with the world.</p>
-            </div>
-            <div class="team-card">
-                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/user-male-circle.png" alt="Ronit Das">
-                <h3 class="team-name">Ronit Das</h3>
-                <p class="team-role">Website Manager</p>
-                <p class="team-desc">The technical architect behind the Wisdope digital platform and Learning Management System.</p>
-            </div>
-        </div>
-        """
-        st.markdown(team_html, unsafe_allow_html=True)
+    
     with tab1:
         st.header("Why join WISDOPE?")
         features = [
@@ -343,6 +232,131 @@ if not st.session_state.logged_in:
             from PIL import Image
             if os.path.exists(img_path):
                 st.image(Image.open(img_path), caption="Students during theory and practical session", use_container_width=True)
+    # --- NEW: ELITE MYSTIC TEAM TAB ---
+    with tab_team:
+        st.header("🔮 Meet the Wisdope Team")
+        st.write("The elite professionals working behind the scenes to bring you the best education.")
+        st.write("---")
+        
+        team_html = """
+        <style>
+        .team-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
+            padding: 20px 10px;
+        }
+        .team-card {
+            background: linear-gradient(145deg, #13111C, #1C1829);
+            border-radius: 16px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.15);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            border-top: 4px solid #8A2BE2;
+            width: 250px;
+            transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .team-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(138, 43, 226, 0.5);
+            border-color: #8A2BE2;
+        }
+        .team-img {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #00E5FF;
+            margin-bottom: 15px;
+            background-color: #0f0f1b;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+        }
+        .team-card:hover .team-img {
+            transform: scale(1.08) rotate(3deg);
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
+        }
+        .team-name {
+            color: #F8F9FA;
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 5px;
+            margin-top: 0;
+            letter-spacing: 0.5px;
+        }
+        .team-role {
+            color: #00E5FF;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0px;
+            margin-top: 0;
+            min-height: 40px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: margin-bottom 0.4s ease;
+        }
+        .team-card:hover .team-role {
+            margin-bottom: 12px;
+        }
+        .team-desc {
+            color: #B0A8B9;
+            font-size: 14px;
+            line-height: 1.5;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            margin: 0;
+            transition: all 0.4s ease-in-out;
+        }
+        .team-card:hover .team-desc {
+            max-height: 150px;
+            opacity: 1;
+            margin-top: 0px;
+        }
+        </style>
+        <div class="team-container">
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/businessman.png" alt="Rishav Sir">
+                <h3 class="team-name">Rishav Karar</h3>
+                <div class="team-role">Founder & Lead Educator</div>
+                <p class="team-desc">R.A. (Pharmacognosy). 6+ years of teaching experience, guiding students to excellence.</p>
+            </div>
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/stethoscope.png" alt="Doctor">
+                <h3 class="team-name">Soumyadeep Mondal</h3>
+                <div class="team-role">Medical Advisor</div>
+                <p class="team-desc">Doctor at Jadavpur Hospital. Bringing real-world medical insights and expert guidance.</p>
+            </div>
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/manager.png" alt="Secretary">
+                <h3 class="team-name">Gouranga Biswas</h3>
+                <div class="team-role">Academy Secretary</div>
+                <p class="team-desc">Managing operations, administration, and ensuring the academy runs smoothly day-to-day.</p>
+            </div>
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/commercial.png" alt="Media Consultant">
+                <h3 class="team-name">Suhina Karar</h3>
+                <div class="team-role">Media Consultant</div>
+                <p class="team-desc">Handling social media, digital presence, and connecting Wisdope Academy with the world.</p>
+            </div>
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/3d-fluency/150/user-male-circle.png" alt="Ronit Das">
+                <h3 class="team-name">Ronit Das</h3>
+                <div class="team-role">Chief Web Developer</div>
+                <p class="team-desc">The technical architect behind the Wisdope digital platform and Learning Management System.</p>
+            </div>
+        </div>
+        """
+        st.markdown(team_html, unsafe_allow_html=True)
     # --- NEW: LEADERBOARD TAB ---
     with tab_leader:
         st.header("🌟 Wisdope Hall of Fame")
