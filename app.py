@@ -232,52 +232,6 @@ if not st.session_state.logged_in:
             from PIL import Image
             if os.path.exists(img_path):
                 st.image(Image.open(img_path), caption="Students during theory and practical session", use_container_width=True)
-    # --- NEW: LEADERBOARD TAB ---
-    with tab_leader:
-        st.header("🌟 Wisdope Hall of Fame")
-        st.write("Recognizing outstanding performance, hard work, and dedication!")
-        st.write("---")
-        
-        try:
-            from streamlit_gsheets import GSheetsConnection
-            conn = st.connection("gsheets", type=GSheetsConnection)
-            leader_df = conn.read(worksheet="Leaderboard", ttl=60) # Refreshes every 60 seconds
-            
-            # Check if there's actually a winner listed
-            if not leader_df.empty and str(leader_df.iloc[0]["Name"]).lower() not in ["nan", "none", ""]:
-                star_name = str(leader_df.iloc[0]["Name"]).strip()
-                star_batch = str(leader_df.iloc[0]["Batch"]).strip()
-                star_msg = str(leader_df.iloc[0]["Message"]).strip()
-                
-                # Safely extract the Image URL if it exists
-                star_img = ""
-                if "Image_URL" in leader_df.columns:
-                    val = str(leader_df.iloc[0]["Image_URL"]).strip()
-                    if val.lower() not in ["nan", "none", ""]:
-                        star_img = val
-                
-                # If there is an image, make a circular profile pic. If not, use the Trophy icon.
-                img_html = f'<img src="{star_img}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #FFD700; margin-bottom: 10px;">' if star_img else '<h1 style="margin-bottom: 0px; font-size: 60px;">🏆</h1>'
-                
-                # A beautiful gold-bordered card for the winner
-                st.markdown(f"""
-                <div style="display: flex; justify-content: center; margin-top: 20px;">
-                    <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 4px; border-radius: 15px; width: 100%; max-width: 600px; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
-                        <div style="background-color: #262626; padding: 40px 20px; border-radius: 12px;">
-                            {img_html}
-                            <h2 style="color: white; margin-top: 10px; margin-bottom: 5px; font-size: 32px;">{star_name}</h2>
-                            <h4 style="color: #FFD700; margin-top: 0px; font-size: 18px;">Batch: {star_batch}</h4>
-                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,215,0,0.3);">
-                                <p style="color: #E0E0E0; font-size: 18px; font-style: italic; margin-bottom: 0px;">"{star_msg}"</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.info("The Star Student of the month will be announced soon! Keep studying hard. 📚")
-        except Exception:
-            st.info("The Star Student of the month will be announced soon! Keep studying hard. 📚")
     # --- NEW: WISDOPE TEAM TAB ---
     with tab_team:
         st.header("🤝 Meet the Wisdope Team")
@@ -371,6 +325,53 @@ if not st.session_state.logged_in:
 </div>
 """
         st.markdown(team_html, unsafe_allow_html=True)
+    # --- NEW: LEADERBOARD TAB ---
+    with tab_leader:
+        st.header("🌟 Wisdope Hall of Fame")
+        st.write("Recognizing outstanding performance, hard work, and dedication!")
+        st.write("---")
+        
+        try:
+            from streamlit_gsheets import GSheetsConnection
+            conn = st.connection("gsheets", type=GSheetsConnection)
+            leader_df = conn.read(worksheet="Leaderboard", ttl=60) # Refreshes every 60 seconds
+            
+            # Check if there's actually a winner listed
+            if not leader_df.empty and str(leader_df.iloc[0]["Name"]).lower() not in ["nan", "none", ""]:
+                star_name = str(leader_df.iloc[0]["Name"]).strip()
+                star_batch = str(leader_df.iloc[0]["Batch"]).strip()
+                star_msg = str(leader_df.iloc[0]["Message"]).strip()
+                
+                # Safely extract the Image URL if it exists
+                star_img = ""
+                if "Image_URL" in leader_df.columns:
+                    val = str(leader_df.iloc[0]["Image_URL"]).strip()
+                    if val.lower() not in ["nan", "none", ""]:
+                        star_img = val
+                
+                # If there is an image, make a circular profile pic. If not, use the Trophy icon.
+                img_html = f'<img src="{star_img}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #FFD700; margin-bottom: 10px;">' if star_img else '<h1 style="margin-bottom: 0px; font-size: 60px;">🏆</h1>'
+                
+                # A beautiful gold-bordered card for the winner
+                st.markdown(f"""
+                <div style="display: flex; justify-content: center; margin-top: 20px;">
+                    <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 4px; border-radius: 15px; width: 100%; max-width: 600px; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+                        <div style="background-color: #262626; padding: 40px 20px; border-radius: 12px;">
+                            {img_html}
+                            <h2 style="color: white; margin-top: 10px; margin-bottom: 5px; font-size: 32px;">{star_name}</h2>
+                            <h4 style="color: #FFD700; margin-top: 0px; font-size: 18px;">Batch: {star_batch}</h4>
+                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,215,0,0.3);">
+                                <p style="color: #E0E0E0; font-size: 18px; font-style: italic; margin-bottom: 0px;">"{star_msg}"</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.info("The Star Student of the month will be announced soon! Keep studying hard. 📚")
+        except Exception:
+            st.info("The Star Student of the month will be announced soon! Keep studying hard. 📚")
+    
     with tab4:
         st.header("📍 Visit or Contact Us")
         st.write("**Address:** 37, Dinu Lane, Kadamtala, Howrah-01")
