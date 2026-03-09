@@ -127,11 +127,12 @@ if st.session_state.logged_in:
 #               PUBLIC WEBSITE
 # ==========================================
 if not st.session_state.logged_in:
-    # --- ADDED THE LEADERBOARD TAB HERE ---
-    tab1, tab2, tab3, tab_leader, tab4, tab5, tab6 = st.tabs([
+    # --- ADDED THE TEAM TAB HERE ---
+    tab1, tab2, tab3, tab_team, tab_leader, tab4, tab5, tab6 = st.tabs([
         "🌟 Why Join Us?", 
         "📚 Course Details", 
         "📸 Gallery", 
+        "🤝 Our Team",
         "🏆 Leaderboard", 
         "📍 Contact & Location", 
         "🚀 Join Wisdope", 
@@ -231,8 +232,100 @@ if not st.session_state.logged_in:
             from PIL import Image
             if os.path.exists(img_path):
                 st.image(Image.open(img_path), caption="Students during theory and practical session", use_container_width=True)
+    # --- NEW: WISDOPE TEAM TAB ---
+    with tab_team:
+        st.header("🤝 Meet the Wisdope Team")
+        st.write("The dedicated professionals working hard to bring you the best education.")
+        st.write("---")
+        
+        # CSS Grid for Mobile-Responsive Cards
+        team_html = """
+        <style>
+            .team-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                padding: 10px;
+            }
+            .team-card {
+                background-color: #262626;
+                border-radius: 12px;
+                padding: 20px;
+                text-align: center;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                border-top: 4px solid #FFD700;
+                transition: transform 0.3s ease;
+            }
+            .team-card:hover {
+                transform: translateY(-5px);
+            }
+            .team-img {
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 3px solid #FFD700;
+                margin-bottom: 15px;
+            }
+            .team-name {
+                color: white;
+                font-size: 22px;
+                margin-bottom: 5px;
+                margin-top: 0;
+            }
+            .team-role {
+                color: #FFD700;
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                margin-top: 0;
+            }
+            .team-desc {
+                color: #cccccc;
+                font-size: 14px;
+                line-height: 1.4;
+            }
+        </style>
 
-    # --- NEW: LEADERBOARD TAB (4th Position) ---
+        <div class="team-container">
+            <div class="team-card">
+                <img class="team-img" src="https://raw.githubusercontent.com/Ronit-0/WISDOPE_PROJECT/main/images/IMG_8098.PNG" alt="Rishav Sir">
+                <h3 class="team-name">Rishav Karar</h3>
+                <p class="team-role">Founder & Lead Educator</p>
+                <p class="team-desc">MSc. (Biotech), R.A. (Pharmacognosy). 6+ years of teaching experience, guiding students to excellence in science.</p>
+            </div>
+
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/color/150/user-male-circle--v1.png" alt="Doctor">
+                <h3 class="team-name">[Doctor's Name]</h3>
+                <p class="team-role">Medical Advisor & Guest Lecturer</p>
+                <p class="team-desc">Bringing real-world medical insights and expert NEET guidance to Wisdope Academy students.</p>
+            </div>
+
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/color/150/user-male-circle--v1.png" alt="Ronit Das">
+                <h3 class="team-name">Ronit Das</h3>
+                <p class="team-role">Lead Technical Architect</p>
+                <p class="team-desc">The brains behind the Wisdope digital platform. Building seamless, interactive learning experiences.</p>
+            </div>
+
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/color/150/user-male-circle--v1.png" alt="Secretary">
+                <h3 class="team-name">[Secretary's Name]</h3>
+                <p class="team-role">Operations Manager</p>
+                <p class="team-desc">Ensuring the academy runs smoothly day-to-day, handling administration and student support.</p>
+            </div>
+
+            <div class="team-card">
+                <img class="team-img" src="https://img.icons8.com/color/150/user-male-circle--v1.png" alt="Social Media">
+                <h3 class="team-name">[Handler's Name]</h3>
+                <p class="team-role">Digital Marketing Head</p>
+                <p class="team-desc">Connecting Wisdope Academy with the world through engaging content and student success stories.</p>
+            </div>
+        </div>
+        """
+        st.markdown(team_html, unsafe_allow_html=True)
+    # --- NEW: LEADERBOARD TAB ---
     with tab_leader:
         st.header("🌟 Wisdope Hall of Fame")
         st.write("Recognizing outstanding performance, hard work, and dedication!")
