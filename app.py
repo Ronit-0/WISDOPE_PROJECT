@@ -278,6 +278,99 @@ if not st.session_state.logged_in:
                 st.info("The Star Student of the month will be announced soon! Keep studying hard. 📚")
         except Exception:
             st.info("The Star Student of the month will be announced soon! Keep studying hard. 📚")
+    # --- NEW: WISDOPE TEAM TAB ---
+    with tab_team:
+        st.header("🤝 Meet the Wisdope Team")
+        st.write("The dedicated professionals working hard to bring you the best education.")
+        st.write("---")
+        
+        team_html = """
+<style>
+.team-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 10px;
+}
+.team-card {
+    background-color: #262626;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    border-top: 4px solid #FFD700;
+    transition: transform 0.3s ease;
+}
+.team-card:hover {
+    transform: translateY(-5px);
+}
+.team-img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #FFD700;
+    margin-bottom: 15px;
+    background-color: #333333;
+}
+.team-name {
+    color: white;
+    font-size: 22px;
+    margin-bottom: 5px;
+    margin-top: 0;
+}
+.team-role {
+    color: #FFD700;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+.team-desc {
+    color: #cccccc;
+    font-size: 14px;
+    line-height: 1.4;
+}
+</style>
+
+<div class="team-container">
+    <div class="team-card">
+        <img class="team-img" src="https://raw.githubusercontent.com/Ronit-0/WISDOPE_PROJECT/main/images/IMG_8098.PNG" alt="Rishav Sir">
+        <h3 class="team-name">Rishav Karar</h3>
+        <p class="team-role">Founder & Lead Educator</p>
+        <p class="team-desc">MSc. (Biotech), R.A. (Pharmacognosy). 6+ years of teaching experience, guiding students to excellence in science.</p>
+    </div>
+
+    <div class="team-card">
+        <img class="team-img" src="https://img.icons8.com/3d-fluency/150/user-male-circle.png" alt="Ronit Das">
+        <h3 class="team-name">Ronit Das</h3>
+        <p class="team-role">Chief Web Developer</p>
+        <p class="team-desc">The technical architect behind the Wisdope digital platform. Building seamless, interactive learning experiences.</p>
+    </div>
+
+    <div class="team-card">
+        <img class="team-img" src="https://img.icons8.com/3d-fluency/150/stethoscope.png" alt="Medical Advisor">
+        <h3 class="team-name">Expert Faculty</h3>
+        <p class="team-role">Medical Advisor & Guest Lecturer</p>
+        <p class="team-desc">Bringing real-world medical insights and expert NEET guidance to Wisdope Academy students. (Revealing Soon!)</p>
+    </div>
+
+    <div class="team-card">
+        <img class="team-img" src="https://img.icons8.com/3d-fluency/150/manager.png" alt="Operations">
+        <h3 class="team-name">Operations Head</h3>
+        <p class="team-role">Academy Administration</p>
+        <p class="team-desc">Ensuring the academy runs smoothly day-to-day, handling administration and student support. (Revealing Soon!)</p>
+    </div>
+
+    <div class="team-card">
+        <img class="team-img" src="https://img.icons8.com/3d-fluency/150/commercial.png" alt="Marketing">
+        <h3 class="team-name">Digital Marketer</h3>
+        <p class="team-role">Social Media Handler</p>
+        <p class="team-desc">Connecting Wisdope Academy with the world through engaging content and student success stories. (Revealing Soon!)</p>
+    </div>
+</div>
+"""
+        st.markdown(team_html, unsafe_allow_html=True)
     with tab4:
         st.header("📍 Visit or Contact Us")
         st.write("**Address:** 37, Dinu Lane, Kadamtala, Howrah-01")
