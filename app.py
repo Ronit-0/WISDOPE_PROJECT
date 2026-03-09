@@ -298,7 +298,7 @@ if not st.session_state.logged_in:
             letter-spacing: 1px;
             margin-bottom: 0px;
             margin-top: 0;
-            min-height: 40px; 
+            min-height: 20px; 
             display: flex;
             align-items: center;
             justify-content: center;
@@ -351,7 +351,7 @@ if not st.session_state.logged_in:
             <div class="team-card">
                 <img class="team-img" src="https://img.icons8.com/3d-fluency/150/user-male-circle.png" alt="Ronit Das">
                 <h3 class="team-name">Ronit Das</h3>
-                <div class="team-role">Chief Web Developer</div>
+                <div class="team-role">Digital Architect</div>
                 <p class="team-desc">The technical architect behind the Wisdope digital platform and Learning Management System.</p>
             </div>
         </div>
