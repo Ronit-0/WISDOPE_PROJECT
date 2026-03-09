@@ -10,7 +10,7 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="Wisdope Academy", page_icon="🔬", layout="wide")
 
 def set_custom_style():
-    bg_image_url = "https://raw.githubusercontent.com/Ronit-0/WISDOPE_PROJECT/main/images/IMG_8098.PNG"
+    bg_image_url = "https://raw.githubusercontent.com/Ronit-0/WISDOPE_PROJECT/main/images/IMG_8098.png"
 
     st.markdown(f"""
         <style>
