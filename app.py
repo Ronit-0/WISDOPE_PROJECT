@@ -861,6 +861,10 @@ else:
             st.warning("🚨 **EXAM IN PROGRESS - FOCUS MODE ACTIVE** 🚨")
             
             if st.session_state.get("exam_completed", False):
+                import streamlit.components.v1 as components
+                # Reset the JS lock for future exams
+                components.html("<script>window.parent.wisdopeExamSubmitted = false;</script>", height=0)
+                
                 st.success("✅ Exam Submitted Successfully!")
                 st.info("📊 Your exam has been securely saved. Results will be announced soon by Rishav Sir.")
                 if st.button("🚪 Exit Focus Mode", type="primary", use_container_width=True):
@@ -881,11 +885,9 @@ else:
                     time_limit = int(settings_df.iloc[0]["Duration"])
                     end_time = st.session_state.exam_start_time + timedelta(minutes=time_limit)
                     rem_sec = int((end_time - ist_now).total_seconds())
-                    
-                    # Prevents the timer from displaying negative numbers
                     display_sec = max(0, rem_sec)
                     
-                    # THE JAVASCRIPT AUTO-SUBMIT HACK
+                    # BULLETPROOF JAVASCRIPT HACK (WITH 1-CLICK LOCK)
                     timer_html = f"""
                     <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
                         ⏳ <span id="timer">{display_sec // 60:02d}:{display_sec % 60:02d}</span>
@@ -898,16 +900,19 @@ else:
                                 clearInterval(timerInterval);
                                 document.getElementById("timer").innerHTML = "00:00 (AUTO-SUBMITTING...)";
                                 
-                                // Hack: Finds and physically clicks the Streamlit 'Submit' button
-                                var buttons = window.parent.document.querySelectorAll('button[kind="primaryFormSubmit"]');
-                                if (buttons.length > 0) {{
-                                    buttons[0].click();
-                                }} else {{
-                                    var allBtns = window.parent.document.querySelectorAll('button');
-                                    for (var i=0; i<allBtns.length; i++) {{
-                                        if(allBtns[i].innerText.includes('Submit Exam')) {{
-                                            allBtns[i].click();
-                                            break;
+                                // LOCK: Prevents the infinite click loop
+                                if (!window.parent.wisdopeExamSubmitted) {{
+                                    window.parent.wisdopeExamSubmitted = true;
+                                    var buttons = window.parent.document.querySelectorAll('button[kind="primaryFormSubmit"]');
+                                    if (buttons.length > 0) {{
+                                        buttons[0].click();
+                                    }} else {{
+                                        var allBtns = window.parent.document.querySelectorAll('button');
+                                        for (var i=0; i<allBtns.length; i++) {{
+                                            if(allBtns[i].innerText.includes('Submit Exam')) {{
+                                                allBtns[i].click();
+                                                break;
+                                            }}
                                         }}
                                     }}
                                 }}
@@ -937,8 +942,10 @@ else:
                         submitted = st.form_submit_button("Submit Exam", type="primary")
                         
                         if submitted:
+                            # 1. TRAP DOOR ESCAPE: Set this to True instantly to prevent infinite loops
+                            st.session_state.exam_completed = True 
+                            
                             ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                            # 5 second grace period to accurately catch the auto-submit
                             is_late = (ist_submit - end_time).total_seconds() > 5
                             
                             score = 0
@@ -950,7 +957,6 @@ else:
                                     
                             percentage = round((score / total_q) * 100, 2)
                             
-                            # Add the specific Auto-Submit labels if the JS triggered it late
                             if is_late:
                                 pct_str = f"{percentage}% (Late)"
                                 score_str = f"{score}/{total_q} (Auto-Submit)"
@@ -958,24 +964,29 @@ else:
                                 pct_str = f"{percentage}%"
                                 score_str = f"{score}/{total_q}"
                             
-                            scores_df = conn.read(worksheet="Scores", ttl=0)
-                            new_score = pd.DataFrame([{
-                                "Name": st.session_state.user_name,
-                                "Batch": st.session_state.user_class,
-                                "Subject": active_sub,
-                                "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
-                                "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
-                                "Score": score_str,
-                                "Percentage": pct_str
-                            }])
+                            try:
+                                # 2. QUOTA SAFEGUARD: Changed ttl=0 to ttl=60
+                                scores_df = conn.read(worksheet="Scores", ttl=60)
+                                new_score = pd.DataFrame([{
+                                    "Name": st.session_state.user_name,
+                                    "Batch": st.session_state.user_class,
+                                    "Subject": active_sub,
+                                    "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
+                                    "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
+                                    "Score": score_str,
+                                    "Percentage": pct_str
+                                }])
+                                
+                                updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
+                                conn.update(worksheet="Scores", data=updated_scores)
+                                st.cache_data.clear() 
+                            except Exception:
+                                pass # Fails silently if API limit hit, preventing loop crash
                             
-                            updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
-                            conn.update(worksheet="Scores", data=updated_scores)
-                            st.cache_data.clear() # CACHE WIPE ON SUBMISSION
-                            
-                            st.session_state.exam_completed = True
-                            del st.session_state.exam_questions
+                            if 'exam_questions' in st.session_state:
+                                del st.session_state.exam_questions
                             st.rerun()
+                            
                 except Exception as e:
                     st.error(f"Exam Rendering Error: {e}")
                     
@@ -1040,6 +1051,8 @@ else:
                         
                     submitted = st.form_submit_button("Submit Practice", type="primary")
                     if submitted:
+                        # BREAK LOOP
+                        st.session_state.practice_completed = True
                         from datetime import datetime, timedelta
                         ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
                         
@@ -1054,7 +1067,8 @@ else:
                         
                         try:
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            scores_df = conn.read(worksheet="Scores", ttl=0)
+                            # QUOTA SAFEGUARD
+                            scores_df = conn.read(worksheet="Scores", ttl=60)
                             
                             new_score = pd.DataFrame([{
                                 "Name": st.session_state.user_name,
@@ -1067,12 +1081,12 @@ else:
                             }])
                             updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                             conn.update(worksheet="Scores", data=updated_scores)
-                        except Exception as e:
-                            st.error(f"Could not save score: {e}")
+                            st.cache_data.clear()
+                        except Exception:
+                            pass
 
                         st.session_state.practice_score = score
                         st.session_state.practice_total = total
-                        st.session_state.practice_completed = True
                         st.rerun()
 
         # ==========================================
@@ -1122,7 +1136,6 @@ else:
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     
-                    # 1. CHECK FOR ASSIGNED FINAL EXAMS
                     settings_df = conn.read(worksheet="Exam_Settings", ttl=15)
                     exam_available = False
                     
@@ -1172,7 +1185,6 @@ else:
                                     brain_df["Exam Type"] = "Practice"
                                 e_col = brain_df["Exam Type"].astype(str).str.strip().str.title()
                                 
-                                # FIX: Also handle "ALL" logic for question grabbing
                                 if exam_cls == "ALL" and exam_brd == "ALL":
                                     subject_questions = brain_df[(brain_df["Subject"] == active_sub) & (e_col == "Final")]
                                 elif exam_cls == "ALL":
