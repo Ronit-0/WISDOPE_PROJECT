@@ -818,13 +818,30 @@ else:
                 
                 st.write("---")
                 st.subheader("📊 Live Exam Scores")
-                scores_df = conn.read(worksheet="Scores", ttl=15) 
-                if not scores_df.empty and "Name" in scores_df.columns:
-                    st.dataframe(scores_df, use_container_width=True, hide_index=True)
-                else:
-                    st.info("No scores recorded yet.")
-            except Exception as e:
-                st.error(f"Error fetching data: {e}")
+                try:
+                    scores_df = conn.read(worksheet="Scores", ttl=15) 
+                    if not scores_df.empty and "Name" in scores_df.columns:
+                        
+                        # Admin Fix: Google Sheets turning percentages into pure numbers (e.g., 1 instead of 100%)
+                        def format_pct(val):
+                            v_str = str(val).strip()
+                            try:
+                                v_num = float(v_str)
+                                if 0.0 <= v_num <= 1.0:
+                                    return f"{int(v_num * 100)}%"
+                                else:
+                                    return f"{v_str}%"
+                            except:
+                                return v_str
+                                
+                        if "Percentage" in scores_df.columns:
+                            scores_df["Percentage"] = scores_df["Percentage"].apply(format_pct)
+                            
+                        st.dataframe(scores_df, use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No scores recorded yet.")
+                except Exception as e:
+                    st.info("Scores database not available yet.")
 
     # ------------------------------------------
     #            STUDENT DASHBOARD
