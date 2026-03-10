@@ -60,7 +60,6 @@ st.write("---")
 # ==========================================
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
-    # SMART CACHE: Remembers news for 60 seconds
     news_df = conn.read(worksheet="News", ttl=60) 
     
     if not news_df.empty:
@@ -158,7 +157,6 @@ if not st.session_state.logged_in:
         st.header("📸 Some Glimpses of Our Coaching Institute")
         st.write("---")
         try:
-            # THIS IS FIXED: Moved outside the HTML string
             import streamlit.components.v1 as components 
             conn = st.connection("gsheets", type=GSheetsConnection)
             gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=60)
@@ -716,16 +714,18 @@ else:
                     except Exception as e:
                         st.error(f"Database Error: {e}")
 
-        # --- NEW: API OPTIMIZED EXAM DEPLOYER ---
         with admin_tab6:
             st.subheader("🧠 Deploy Brain Drive Exam")
             
+            if "exam_action_msg" in st.session_state:
+                st.success(st.session_state.exam_action_msg)
+                del st.session_state.exam_action_msg
+                
             try:
                 from datetime import datetime, timedelta
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                 
-                # Fetch every 15 seconds to prevent Quota Crashes
                 try:
                     settings_df = conn.read(worksheet="Exam_Settings", ttl=15)
                 except:
@@ -751,8 +751,8 @@ else:
                             
                             if st.button("🛑 Force Stop Exam Early"):
                                 conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Board":"", "Class":"", "Subject": "", "Duration": "", "Retake": "", "Expires_At": "", "Question_Limit": ""}]))
-                                st.success("🛑 Exam forcefully stopped! Waiting for database to sync...")
-                                time.sleep(2)
+                                st.cache_data.clear() 
+                                st.session_state.exam_action_msg = "🛑 Exam forcefully stopped."
                                 st.rerun()
                     except:
                         pass
@@ -774,7 +774,6 @@ else:
                     set_brd = st.selectbox("Target Board:", avail_boards + ["ALL"]) if avail_boards else None
                 
                 if set_cls and set_brd:
-                    # FIX: Handle "ALL" logic properly so it doesn't crash
                     if set_cls == "ALL" and set_brd == "ALL":
                         filtered_q = vault_q
                     elif set_cls == "ALL":
@@ -809,8 +808,8 @@ else:
                                 "Question_Limit": exam_limit
                             }])
                             conn.update(worksheet="Exam_Settings", data=settings)
-                            st.success(f"✅ Exam Deployed Successfully! Students will see it in ~15 seconds.")
-                            time.sleep(2)
+                            st.cache_data.clear() 
+                            st.session_state.exam_action_msg = f"✅ Exam Deployed Successfully! It will vanish at {expires_at.strftime('%I:%M %p')}."
                             st.rerun()
                     else:
                         st.warning(f"No Final Exam questions found for Class {set_cls} ({set_brd}).")
@@ -819,14 +818,13 @@ else:
                 
                 st.write("---")
                 st.subheader("📊 Live Exam Scores")
-                scores_df = conn.read(worksheet="Scores", ttl=15)
+                scores_df = conn.read(worksheet="Scores", ttl=15) 
                 if not scores_df.empty and "Name" in scores_df.columns:
                     st.dataframe(scores_df, use_container_width=True, hide_index=True)
                 else:
                     st.info("No scores recorded yet.")
             except Exception as e:
                 st.error(f"Error fetching data: {e}")
-
 
     # ------------------------------------------
     #            STUDENT DASHBOARD
@@ -862,7 +860,6 @@ else:
             
             if st.session_state.get("exam_completed", False):
                 import streamlit.components.v1 as components
-                # Reset the JS lock for future exams
                 components.html("<script>window.parent.wisdopeExamSubmitted = false;</script>", height=0)
                 
                 st.success("✅ Exam Submitted Successfully!")
@@ -883,11 +880,12 @@ else:
                     
                     active_sub = str(settings_df.iloc[0]["Subject"])
                     time_limit = int(settings_df.iloc[0]["Duration"])
+                    
                     end_time = st.session_state.exam_start_time + timedelta(minutes=time_limit)
                     rem_sec = int((end_time - ist_now).total_seconds())
                     display_sec = max(0, rem_sec)
                     
-                    # BULLETPROOF JAVASCRIPT HACK (WITH 1-CLICK LOCK)
+                    # 1. ALWAYS SHOW TIMER
                     timer_html = f"""
                     <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
                         ⏳ <span id="timer">{display_sec // 60:02d}:{display_sec % 60:02d}</span>
@@ -898,22 +896,13 @@ else:
                             timeleft--;
                             if (timeleft <= 0) {{
                                 clearInterval(timerInterval);
-                                document.getElementById("timer").innerHTML = "00:00 (AUTO-SUBMITTING...)";
+                                document.getElementById("timer").innerHTML = "00:00 (TIME UP!)";
                                 
-                                // LOCK: Prevents the infinite click loop
                                 if (!window.parent.wisdopeExamSubmitted) {{
                                     window.parent.wisdopeExamSubmitted = true;
                                     var buttons = window.parent.document.querySelectorAll('button[kind="primaryFormSubmit"]');
                                     if (buttons.length > 0) {{
                                         buttons[0].click();
-                                    }} else {{
-                                        var allBtns = window.parent.document.querySelectorAll('button');
-                                        for (var i=0; i<allBtns.length; i++) {{
-                                            if(allBtns[i].innerText.includes('Submit Exam')) {{
-                                                allBtns[i].click();
-                                                break;
-                                            }}
-                                        }}
                                     }}
                                 }}
                             }} else {{
@@ -927,26 +916,26 @@ else:
                     components.html(timer_html, height=75)
                     
                     if rem_sec <= 0:
-                        st.error("🚨 TIME IS UP! Auto-submitting your current answers...")
-                        
+                        st.error("🚨 TIME IS UP! Please click 'Submit Exam' below immediately. Your current answers have been saved.")
+
+                    # 2. ALWAYS SHOW FORM (Prevents vanishing answers)
                     with st.form("exam_form"):
                         user_answers = {}
                         for i, q in enumerate(st.session_state.exam_questions):
                             st.write(f"**Q{i+1}: {q['Question']}**")
                             options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
                             options = [opt for opt in options if opt.lower() != 'nan']
-                            
                             user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
                             st.write("---")
                             
                         submitted = st.form_submit_button("Submit Exam", type="primary")
                         
                         if submitted:
-                            # 1. TRAP DOOR ESCAPE: Set this to True instantly to prevent infinite loops
-                            st.session_state.exam_completed = True 
+                            # 3. ESCAPE HATCH: Instantly lock out of infinite loops
+                            st.session_state.exam_completed = True
                             
                             ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                            is_late = (ist_submit - end_time).total_seconds() > 5
+                            is_late = (ist_submit - end_time).total_seconds() > 10
                             
                             score = 0
                             total_q = len(st.session_state.exam_questions)
@@ -959,13 +948,12 @@ else:
                             
                             if is_late:
                                 pct_str = f"{percentage}% (Late)"
-                                score_str = f"{score}/{total_q} (Auto-Submit)"
+                                score_str = f"{score}/{total_q} (Auto/Late)"
                             else:
                                 pct_str = f"{percentage}%"
                                 score_str = f"{score}/{total_q}"
                             
                             try:
-                                # 2. QUOTA SAFEGUARD: Changed ttl=0 to ttl=60
                                 scores_df = conn.read(worksheet="Scores", ttl=60)
                                 new_score = pd.DataFrame([{
                                     "Name": st.session_state.user_name,
@@ -981,12 +969,11 @@ else:
                                 conn.update(worksheet="Scores", data=updated_scores)
                                 st.cache_data.clear() 
                             except Exception:
-                                pass # Fails silently if API limit hit, preventing loop crash
+                                pass 
                             
                             if 'exam_questions' in st.session_state:
                                 del st.session_state.exam_questions
                             st.rerun()
-                            
                 except Exception as e:
                     st.error(f"Exam Rendering Error: {e}")
                     
@@ -1051,7 +1038,6 @@ else:
                         
                     submitted = st.form_submit_button("Submit Practice", type="primary")
                     if submitted:
-                        # BREAK LOOP
                         st.session_state.practice_completed = True
                         from datetime import datetime, timedelta
                         ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -1067,7 +1053,6 @@ else:
                         
                         try:
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            # QUOTA SAFEGUARD
                             scores_df = conn.read(worksheet="Scores", ttl=60)
                             
                             new_score = pd.DataFrame([{
@@ -1168,6 +1153,10 @@ else:
 
                         if already_taken and not allow_retake:
                             st.warning("You have already completed this exam. Retakes are currently disabled by Rishav Sir.")
+                            # QUICK CACHE CLEAR BUTTON
+                            if st.button("🔄 Refresh Database (If you just deleted your old score)"):
+                                st.cache_data.clear()
+                                st.rerun()
                         else:
                             st.markdown(f"""
                             <div style="background-color: rgba(255, 0, 0, 0.1); border-left: 5px solid red; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
