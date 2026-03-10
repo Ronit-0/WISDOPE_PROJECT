@@ -882,103 +882,96 @@ else:
                     end_time = st.session_state.exam_start_time + timedelta(minutes=time_limit)
                     rem_sec = int((end_time - ist_now).total_seconds())
                     
-                    if rem_sec > 0:
-                        # FIX: THE JAVASCRIPT AUTO-SUBMIT HACK
-                        timer_html = f"""
-                        <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
-                            ⏳ <span id="timer">{rem_sec // 60:02d}:{rem_sec % 60:02d}</span>
-                        </div>
-                        <script>
-                            var timeleft = {rem_sec};
-                            var timerInterval = setInterval(function() {{
-                                timeleft--;
-                                if (timeleft <= 0) {{
-                                    clearInterval(timerInterval);
-                                    document.getElementById("timer").innerHTML = "00:00 (AUTO-SUBMITTING...)";
-                                    
-                                    // Hack: Finds and physically clicks the Streamlit 'Submit' button
-                                    var buttons = window.parent.document.querySelectorAll('button[kind="primaryFormSubmit"]');
-                                    if (buttons.length > 0) {{
-                                        buttons[0].click();
-                                    }} else {{
-                                        var allBtns = window.parent.document.querySelectorAll('button');
-                                        for (var i=0; i<allBtns.length; i++) {{
-                                            if(allBtns[i].innerText.includes('Submit Exam')) {{
-                                                allBtns[i].click();
-                                                break;
-                                            }}
+                    # Prevents the timer from displaying negative numbers
+                    display_sec = max(0, rem_sec)
+                    
+                    # THE JAVASCRIPT AUTO-SUBMIT HACK
+                    timer_html = f"""
+                    <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
+                        ⏳ <span id="timer">{display_sec // 60:02d}:{display_sec % 60:02d}</span>
+                    </div>
+                    <script>
+                        var timeleft = {rem_sec};
+                        var timerInterval = setInterval(function() {{
+                            timeleft--;
+                            if (timeleft <= 0) {{
+                                clearInterval(timerInterval);
+                                document.getElementById("timer").innerHTML = "00:00 (AUTO-SUBMITTING...)";
+                                
+                                // Hack: Finds and physically clicks the Streamlit 'Submit' button
+                                var buttons = window.parent.document.querySelectorAll('button[kind="primaryFormSubmit"]');
+                                if (buttons.length > 0) {{
+                                    buttons[0].click();
+                                }} else {{
+                                    var allBtns = window.parent.document.querySelectorAll('button');
+                                    for (var i=0; i<allBtns.length; i++) {{
+                                        if(allBtns[i].innerText.includes('Submit Exam')) {{
+                                            allBtns[i].click();
+                                            break;
                                         }}
                                     }}
-                                }} else {{
-                                    var m = Math.floor(timeleft / 60);
-                                    var s = timeleft % 60;
-                                    document.getElementById("timer").innerHTML = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
                                 }}
-                            }}, 1000);
-                        </script>
-                        """
-                        components.html(timer_html, height=75)
+                            }} else {{
+                                var m = Math.floor(timeleft / 60);
+                                var s = timeleft % 60;
+                                document.getElementById("timer").innerHTML = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+                            }}
+                        }}, 1000);
+                    </script>
+                    """
+                    components.html(timer_html, height=75)
+                    
+                    if rem_sec <= 0:
+                        st.error("🚨 TIME IS UP! Auto-submitting your current answers...")
                         
-                        with st.form("exam_form"):
-                            user_answers = {}
-                            for i, q in enumerate(st.session_state.exam_questions):
-                                st.write(f"**Q{i+1}: {q['Question']}**")
-                                options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
-                                options = [opt for opt in options if opt.lower() != 'nan']
-                                
-                                user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
-                                st.write("---")
-                                
-                            submitted = st.form_submit_button("Submit Exam", type="primary")
+                    with st.form("exam_form"):
+                        user_answers = {}
+                        for i, q in enumerate(st.session_state.exam_questions):
+                            st.write(f"**Q{i+1}: {q['Question']}**")
+                            options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
+                            options = [opt for opt in options if opt.lower() != 'nan']
                             
-                            if submitted:
-                                ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                                # Grace period allows the auto-submit to register as "On Time"
-                                is_late = (ist_submit - end_time).total_seconds() > 15
-                                
-                                score = 0
-                                total_q = len(st.session_state.exam_questions)
-                                for i, q in enumerate(st.session_state.exam_questions):
-                                    correct_ans = str(q['Correct Answer']).strip().lower()
-                                    chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
-                                    if chosen_ans == correct_ans: score += 1
-                                        
-                                percentage = round((score / total_q) * 100, 2)
-                                pct_str = f"{percentage}% (Late)" if is_late else f"{percentage}%"
-                                
-                                scores_df = conn.read(worksheet="Scores", ttl=0)
-                                new_score = pd.DataFrame([{
-                                    "Name": st.session_state.user_name,
-                                    "Batch": st.session_state.user_class,
-                                    "Subject": active_sub,
-                                    "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
-                                    "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
-                                    "Score": f"{score}/{total_q}",
-                                    "Percentage": pct_str
-                                }])
-                                
-                                updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
-                                conn.update(worksheet="Scores", data=updated_scores)
-                                
-                                st.session_state.exam_completed = True
-                                del st.session_state.exam_questions
-                                st.rerun()
-                    else:
-                        st.error("🚨 TIME IS UP! You must submit your exam immediately.")
-                        if st.button("Submit Now (Late)", type="primary"):
+                            user_answers[i] = st.radio("Select an answer:", options, key=f"q_{i}", index=None)
+                            st.write("---")
+                            
+                        submitted = st.form_submit_button("Submit Exam", type="primary")
+                        
+                        if submitted:
                             ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                            # 5 second grace period to accurately catch the auto-submit
+                            is_late = (ist_submit - end_time).total_seconds() > 5
+                            
+                            score = 0
+                            total_q = len(st.session_state.exam_questions)
+                            for i, q in enumerate(st.session_state.exam_questions):
+                                correct_ans = str(q['Correct Answer']).strip().lower()
+                                chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
+                                if chosen_ans == correct_ans: score += 1
+                                    
+                            percentage = round((score / total_q) * 100, 2)
+                            
+                            # Add the specific Auto-Submit labels if the JS triggered it late
+                            if is_late:
+                                pct_str = f"{percentage}% (Late)"
+                                score_str = f"{score}/{total_q} (Auto-Submit)"
+                            else:
+                                pct_str = f"{percentage}%"
+                                score_str = f"{score}/{total_q}"
+                            
                             scores_df = conn.read(worksheet="Scores", ttl=0)
                             new_score = pd.DataFrame([{
-                                    "Name": st.session_state.user_name,
-                                    "Batch": st.session_state.user_class,
-                                    "Subject": active_sub,
-                                    "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
-                                    "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
-                                    "Score": "0 (Forced Auto-Submit)",
-                                    "Percentage": "0% (Late)"
-                                }])
+                                "Name": st.session_state.user_name,
+                                "Batch": st.session_state.user_class,
+                                "Subject": active_sub,
+                                "Start Time": st.session_state.exam_start_time.strftime("%Y-%m-%d %I:%M %p"),
+                                "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
+                                "Score": score_str,
+                                "Percentage": pct_str
+                            }])
+                            
                             updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                             conn.update(worksheet="Scores", data=updated_scores)
+                            st.cache_data.clear() # CACHE WIPE ON SUBMISSION
                             
                             st.session_state.exam_completed = True
                             del st.session_state.exam_questions
