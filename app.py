@@ -1034,6 +1034,9 @@ else:
                         
                     submitted = st.form_submit_button("Submit Practice", type="primary")
                     if submitted:
+                        from datetime import datetime, timedelta
+                        ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                        
                         score = 0
                         total = len(st.session_state.practice_questions)
                         for i, q in enumerate(st.session_state.practice_questions):
@@ -1041,6 +1044,29 @@ else:
                             chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
                             if chosen_ans == correct_ans: score += 1
                         
+                        percentage = round((score / total) * 100, 2)
+                        
+                        # SAVE PRACTICE SCORE TO DATABASE
+                        try:
+                            from streamlit_gsheets import GSheetsConnection
+                            import pandas as pd
+                            conn = st.connection("gsheets", type=GSheetsConnection)
+                            scores_df = conn.read(worksheet="Scores", ttl=0)
+                            
+                            new_score = pd.DataFrame([{
+                                "Name": st.session_state.user_name,
+                                "Batch": st.session_state.user_class,
+                                "Subject": f"{st.session_state.practice_sub} (Practice)",
+                                "Start Time": st.session_state.practice_start_time.strftime("%Y-%m-%d %I:%M %p"),
+                                "Submit Time": ist_submit.strftime("%Y-%m-%d %I:%M %p"),
+                                "Score": f"{score}/{total}",
+                                "Percentage": f"{percentage}%"
+                            }])
+                            updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
+                            conn.update(worksheet="Scores", data=updated_scores)
+                        except Exception as e:
+                            st.error(f"Could not save score: {e}")
+
                         st.session_state.practice_score = score
                         st.session_state.practice_total = total
                         st.session_state.practice_completed = True
@@ -1052,55 +1078,43 @@ else:
         else:
             stud_tab1, stud_tab2, stud_tab3 = st.tabs(["📚 Study Materials", "🧠 Brain Drive", "📢 Notice Board"])
             
-            # --- TAB 1: DYNAMIC STUDY MATERIALS ---
+            # --- TAB 1: STRICTLY FILTERED STUDY MATERIALS ---
             with stud_tab1:
                 try:
                     from streamlit_gsheets import GSheetsConnection
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     m_df = conn.read(worksheet="Materials", ttl=0) 
                     
-                    # Ensure columns exist to prevent crashes
                     if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
                     if 'Board' not in m_df.columns: m_df['Board'] = "ALL"
                         
-                    # Filter by the student's Class
-                    c_mat = m_df[m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
+                    # STRICT FILTER: Only show materials for their Class AND their Board (or "ALL")
+                    b_col = m_df["Board"].astype(str).str.strip().str.upper()
+                    user_b = str(st.session_state.user_board).strip().upper()
                     
-                    # NEW: Dropdown for Board (Defaults to student's Board, but they can view others)
-                    avail_boards = sorted(list(set(c_mat["Board"].dropna().astype(str).tolist())))
+                    c_mat = m_df[(m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()) & 
+                                 ((b_col == user_b) | (b_col == "ALL") | (b_col == ""))]
                     
-                    if not avail_boards:
-                        st.info("No materials available for your class yet.")
+                    student_subs = sorted(list(set(c_mat["Subject"].tolist() if not c_mat.empty else [])))
+                    
+                    if not student_subs:
+                        st.info(f"No study materials available for {st.session_state.user_class} ({st.session_state.user_board}) yet.")
                     else:
-                        # Try to set the default index to the student's board if it exists
-                        default_index = 0
-                        if st.session_state.user_board in avail_boards:
-                            default_index = avail_boards.index(st.session_state.user_board)
-                            
-                        sel_board = st.selectbox("1. Choose Board:", avail_boards, index=default_index)
-                        
-                        if sel_board:
-                            b_mat = c_mat[(c_mat["Board"] == sel_board) | (c_mat["Board"] == "ALL")]
-                            student_subs = sorted(list(set(b_mat["Subject"].tolist() if not b_mat.empty else [])))
-                            
-                            if not student_subs:
-                                st.info(f"No materials found for {sel_board}.")
-                            else:
-                                sel_sub = st.selectbox("2. Choose a subject:", student_subs)
-                                if sel_sub:
-                                    sub_match = b_mat[b_mat["Subject"] == sel_sub]
-                                    chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
-                                    sel_chap = st.selectbox("3. Choose a chapter/topic:", chapter_list)
-                                    if sel_chap:
-                                        final_match = sub_match[sub_match["Chapter"] == sel_chap]
-                                        if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
-                                            st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
-                                        else:
-                                            st.info("Materials for this chapter are coming soon!")
+                        sel_sub = st.selectbox("1. Choose a subject:", student_subs)
+                        if sel_sub:
+                            sub_match = c_mat[c_mat["Subject"] == sel_sub]
+                            chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
+                            sel_chap = st.selectbox("2. Choose a chapter/topic:", chapter_list)
+                            if sel_chap:
+                                final_match = sub_match[sub_match["Chapter"] == sel_chap]
+                                if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
+                                    st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
+                                else:
+                                    st.info("Materials for this chapter are coming soon!")
                 except Exception as e:
                     st.error(f"Database Error: {e}")
 
-            # --- TAB 2: ADVANCED BRAIN DRIVE ---
+            # --- TAB 2: STRICTLY FILTERED BRAIN DRIVE ---
             with stud_tab2:
                 st.subheader("🧠 Brain Drive")
                 
@@ -1112,7 +1126,7 @@ else:
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     
-                    # 1. CHECK FOR ASSIGNED FINAL EXAMS FIRST
+                    # 1. CHECK FOR ASSIGNED FINAL EXAMS
                     settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
                     exam_available = False
                     
@@ -1168,44 +1182,57 @@ else:
                                 else:
                                     st.error("Error: No questions found for this subject.")
                     
-                    # 2. SELF ASSESSMENT (PRACTICE) IF NO ASSIGNED EXAM
+                    # 2. SELF ASSESSMENT (PRACTICE)
                     else:
                         st.write("No active final exams. Take a self-assessment practice quiz to test your readiness!")
                         st.write("---")
                         
                         brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
                         if "Class" in brain_df.columns and "Board" in brain_df.columns:
-                            # Filter questions for their specific class
-                            my_class_q = brain_df[brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
+                            # STRICT FILTER: Only show Practice Questions for their Class AND Board
+                            b_col = brain_df["Board"].astype(str).str.strip().str.upper()
+                            user_b = str(st.session_state.user_board).strip().upper()
+                            
+                            my_class_q = brain_df[(brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()) &
+                                                  ((b_col == user_b) | (b_col == "ALL") | (b_col == ""))]
                             
                             if my_class_q.empty:
-                                st.info(f"No practice questions available yet for Class {st.session_state.user_class}.")
+                                st.info(f"No practice questions available yet for Class {st.session_state.user_class} ({st.session_state.user_board}).")
                             else:
-                                col_pb, col_ps = st.columns(2)
-                                with col_pb:
-                                    p_boards = my_class_q["Board"].dropna().unique().tolist()
-                                    def_b_idx = p_boards.index(st.session_state.user_board) if st.session_state.user_board in p_boards else 0
-                                    prac_board = st.selectbox("Select Board to practice:", p_boards, index=def_b_idx) if p_boards else None
-                                
-                                if prac_board:
-                                    with col_ps:
-                                        board_q = my_class_q[my_class_q["Board"] == prac_board]
-                                        p_subs = board_q["Subject"].dropna().unique().tolist()
-                                        prac_sub = st.selectbox("Select Subject:", p_subs) if p_subs else None
+                                p_subs = my_class_q["Subject"].dropna().unique().tolist()
+                                prac_sub = st.selectbox("Select Subject to Practice:", p_subs) if p_subs else None
                                         
-                                    if prac_sub:
-                                        if st.button("📝 Start 10-Question Practice"):
-                                            sub_pool = board_q[board_q["Subject"] == prac_sub]
-                                            sample_size = min(10, len(sub_pool))
-                                            st.session_state.practice_questions = sub_pool.sample(n=sample_size).to_dict('records')
-                                            st.session_state.practice_active = True
-                                            st.session_state.practice_completed = False
-                                            st.rerun()
+                                if prac_sub:
+                                    if st.button("📝 Start 10-Question Practice"):
+                                        sub_pool = my_class_q[my_class_q["Subject"] == prac_sub]
+                                        sample_size = min(10, len(sub_pool))
+                                        st.session_state.practice_questions = sub_pool.sample(n=sample_size).to_dict('records')
+                                        st.session_state.practice_active = True
+                                        st.session_state.practice_completed = False
+                                        st.session_state.practice_sub = prac_sub
+                                        st.session_state.practice_start_time = ist_now
+                                        st.rerun()
                         else:
                             st.info("Brain Drive is currently undergoing database updates.")
                         
+                        # --- NEW: DISPLAY PERSONAL PAST SCORES ---
+                        st.write("---")
+                        st.subheader("📊 My Past Scores")
+                        try:
+                            scores_df = conn.read(worksheet="Scores", ttl=0)
+                            if not scores_df.empty and "Name" in scores_df.columns:
+                                my_scores = scores_df[scores_df["Name"] == st.session_state.user_name]
+                                if not my_scores.empty:
+                                    # Show only relevant columns to the student
+                                    display_scores = my_scores[["Subject", "Start Time", "Score", "Percentage"]].copy()
+                                    st.dataframe(display_scores, hide_index=True, use_container_width=True)
+                                else:
+                                    st.info("You haven't taken any exams or practice tests yet.")
+                        except:
+                            st.info("Scores database not available yet.")
+                        
                 except Exception as e:
-                    st.info(f"Brain Drive Module Check: {e}")
+                    st.info(f"Brain Drive Error: {e}")
 
             # --- TAB 3: NOTICE BOARD ---
             with stud_tab3:
