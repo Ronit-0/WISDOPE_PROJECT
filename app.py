@@ -515,9 +515,6 @@ else:
 
         with admin_tab1:
             st.write("Add new subjects, chapters, and PDF/Video links here.")
-            if "publish_msg" in st.session_state:
-                st.success(st.session_state.publish_msg)
-                del st.session_state.publish_msg 
             if "reset_key" not in st.session_state:
                 st.session_state.reset_key = 0
             
@@ -565,9 +562,9 @@ else:
                             updated_df = pd.concat([df_mat, new_data], ignore_index=True)
                             conn.update(worksheet="Materials", data=updated_df)
                             
-                        st.cache_data.clear() # CACHE CLEAR FOR FRESH DATA
-                        st.session_state.publish_msg = f"✅ Published {final_chapter} for {final_board} ({final_class})!"
+                        st.success(f"✅ Published {final_chapter} for {final_board} ({final_class})!")
                         st.session_state.reset_key += 1 
+                        time.sleep(2)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error: {e}")
@@ -604,7 +601,6 @@ else:
                             gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=60)
                             updated_df = pd.concat([gallery_df, pd.DataFrame(new_urls)], ignore_index=True)
                             conn.update(worksheet="Gallery", data=updated_df)
-                            st.cache_data.clear()
                             st.success(f"✅ Successfully published {len(new_urls)} photo(s)!")
                         else:
                             st.error("Upload failed.")
@@ -669,7 +665,6 @@ else:
                             
                             new_news = pd.DataFrame([{"Message": news_input, "Expiration": exp_dt.strftime("%Y-%m-%d %H:%M:%S")}])
                             conn.update(worksheet="News", data=new_news)
-                            st.cache_data.clear()
                             st.success(f"✅ News published! It will automatically disappear in {duration}.")
                         except Exception as e:
                             st.error(f"Database Error: {e}")
@@ -680,7 +675,6 @@ else:
                     try:
                         empty_news = pd.DataFrame([{"Message": "", "Expiration": ""}])
                         conn.update(worksheet="News", data=empty_news)
-                        st.cache_data.clear()
                         st.success("✅ News banner removed immediately!")
                     except Exception as e:
                         st.error(f"Database Error: {e}")
@@ -707,7 +701,6 @@ else:
                                 
                                 new_leader = pd.DataFrame([{"Name": star_input, "Batch": batch_input, "Message": msg_input, "Image_URL": img_url}])
                                 conn.update(worksheet="Leaderboard", data=new_leader)
-                                st.cache_data.clear()
                                 st.success(f"✅ {star_input} is now live on the public Leaderboard!")
                             except Exception as e:
                                 st.error(f"Database Error: {e}")
@@ -719,33 +712,26 @@ else:
                         conn = st.connection("gsheets", type=GSheetsConnection)
                         empty_leader = pd.DataFrame([{"Name": "", "Batch": "", "Message": "", "Image_URL": ""}])
                         conn.update(worksheet="Leaderboard", data=empty_leader)
-                        st.cache_data.clear()
                         st.success("✅ Leaderboard has been cleared and hidden from the public.")
                     except Exception as e:
                         st.error(f"Database Error: {e}")
 
-        # --- NEW: VAULT SECURED EXAM DEPLOYMENT ---
+        # --- NEW: API OPTIMIZED EXAM DEPLOYER ---
         with admin_tab6:
             st.subheader("🧠 Deploy Brain Drive Exam")
             
-            # Print Action Messages (Survives Reruns)
-            if "exam_action_msg" in st.session_state:
-                st.success(st.session_state.exam_action_msg)
-                del st.session_state.exam_action_msg
-                
             try:
                 from datetime import datetime, timedelta
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                 
+                # Fetch every 15 seconds to prevent Quota Crashes
                 try:
-                    # SMART CACHE: Checks Exam Status every 30 secs to save quota
-                    settings_df = conn.read(worksheet="Exam_Settings", ttl=30)
+                    settings_df = conn.read(worksheet="Exam_Settings", ttl=15)
                 except:
                     st.error("Please add 'Board' and 'Class' columns to your Exam_Settings sheet!")
                     settings_df = pd.DataFrame()
                 
-                # Active Exam Monitor
                 if not settings_df.empty and str(settings_df.iloc[0].get("Status", "")) == "Active":
                     exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
                     exam_sub = str(settings_df.iloc[0].get("Subject", ""))
@@ -765,14 +751,14 @@ else:
                             
                             if st.button("🛑 Force Stop Exam Early"):
                                 conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Board":"", "Class":"", "Subject": "", "Duration": "", "Retake": "", "Expires_At": "", "Question_Limit": ""}]))
-                                st.cache_data.clear() # CLEARS CACHE INSTANTLY
-                                st.session_state.exam_action_msg = "🛑 Exam forcefully stopped."
+                                st.success("🛑 Exam forcefully stopped! Waiting for database to sync...")
+                                time.sleep(2)
                                 st.rerun()
                     except:
                         pass
                 
                 st.write("---")
-                brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
+                brain_df = conn.read(worksheet="Brain_Drive", ttl=15)
                 
                 if "Exam Type" not in brain_df.columns:
                     brain_df["Exam Type"] = "Practice"
@@ -782,13 +768,18 @@ else:
                 col_c, col_b = st.columns(2)
                 with col_c:
                     avail_classes = vault_q["Class"].dropna().unique().tolist() if not vault_q.empty else []
-                    set_cls = st.selectbox("Target Class:", avail_classes) if avail_classes else None
+                    set_cls = st.selectbox("Target Class:", avail_classes + ["ALL"]) if avail_classes else None
                 with col_b:
                     avail_boards = vault_q["Board"].dropna().unique().tolist() if not vault_q.empty else []
                     set_brd = st.selectbox("Target Board:", avail_boards + ["ALL"]) if avail_boards else None
                 
                 if set_cls and set_brd:
-                    if set_brd == "ALL":
+                    # FIX: Handle "ALL" logic properly so it doesn't crash
+                    if set_cls == "ALL" and set_brd == "ALL":
+                        filtered_q = vault_q
+                    elif set_cls == "ALL":
+                        filtered_q = vault_q[vault_q["Board"] == set_brd]
+                    elif set_brd == "ALL":
                         filtered_q = vault_q[vault_q["Class"] == set_cls]
                     else:
                         filtered_q = vault_q[(vault_q["Class"] == set_cls) & (vault_q["Board"] == set_brd)]
@@ -818,8 +809,8 @@ else:
                                 "Question_Limit": exam_limit
                             }])
                             conn.update(worksheet="Exam_Settings", data=settings)
-                            st.cache_data.clear() # CACHE WIPE ON DEPLOY
-                            st.session_state.exam_action_msg = f"✅ Exam Deployed Successfully! It will vanish at {expires_at.strftime('%I:%M %p')}."
+                            st.success(f"✅ Exam Deployed Successfully! Students will see it in ~15 seconds.")
+                            time.sleep(2)
                             st.rerun()
                     else:
                         st.warning(f"No Final Exam questions found for Class {set_cls} ({set_brd}).")
@@ -828,7 +819,7 @@ else:
                 
                 st.write("---")
                 st.subheader("📊 Live Exam Scores")
-                scores_df = conn.read(worksheet="Scores", ttl=15) # Refreshes scores every 15 secs
+                scores_df = conn.read(worksheet="Scores", ttl=15)
                 if not scores_df.empty and "Name" in scores_df.columns:
                     st.dataframe(scores_df, use_container_width=True, hide_index=True)
                 else:
@@ -884,7 +875,7 @@ else:
                     
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                    settings_df = conn.read(worksheet="Exam_Settings", ttl=30)
+                    settings_df = conn.read(worksheet="Exam_Settings", ttl=15)
                     
                     active_sub = str(settings_df.iloc[0]["Subject"])
                     time_limit = int(settings_df.iloc[0]["Duration"])
@@ -892,6 +883,7 @@ else:
                     rem_sec = int((end_time - ist_now).total_seconds())
                     
                     if rem_sec > 0:
+                        # FIX: THE JAVASCRIPT AUTO-SUBMIT HACK
                         timer_html = f"""
                         <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
                             ⏳ <span id="timer">{rem_sec // 60:02d}:{rem_sec % 60:02d}</span>
@@ -902,7 +894,21 @@ else:
                                 timeleft--;
                                 if (timeleft <= 0) {{
                                     clearInterval(timerInterval);
-                                    document.getElementById("timer").innerHTML = "00:00 (TIME UP!)";
+                                    document.getElementById("timer").innerHTML = "00:00 (AUTO-SUBMITTING...)";
+                                    
+                                    // Hack: Finds and physically clicks the Streamlit 'Submit' button
+                                    var buttons = window.parent.document.querySelectorAll('button[kind="primaryFormSubmit"]');
+                                    if (buttons.length > 0) {{
+                                        buttons[0].click();
+                                    }} else {{
+                                        var allBtns = window.parent.document.querySelectorAll('button');
+                                        for (var i=0; i<allBtns.length; i++) {{
+                                            if(allBtns[i].innerText.includes('Submit Exam')) {{
+                                                allBtns[i].click();
+                                                break;
+                                            }}
+                                        }}
+                                    }}
                                 }} else {{
                                     var m = Math.floor(timeleft / 60);
                                     var s = timeleft % 60;
@@ -927,6 +933,7 @@ else:
                             
                             if submitted:
                                 ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                                # Grace period allows the auto-submit to register as "On Time"
                                 is_late = (ist_submit - end_time).total_seconds() > 15
                                 
                                 score = 0
@@ -952,7 +959,6 @@ else:
                                 
                                 updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                                 conn.update(worksheet="Scores", data=updated_scores)
-                                st.cache_data.clear() # CACHE WIPE ON SUBMISSION
                                 
                                 st.session_state.exam_completed = True
                                 del st.session_state.exam_questions
@@ -973,7 +979,6 @@ else:
                                 }])
                             updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                             conn.update(worksheet="Scores", data=updated_scores)
-                            st.cache_data.clear() # CACHE WIPE ON SUBMISSION
                             
                             st.session_state.exam_completed = True
                             del st.session_state.exam_questions
@@ -1000,7 +1005,7 @@ else:
                         try:
                             from datetime import datetime, timedelta
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
+                            brain_df = conn.read(worksheet="Brain_Drive", ttl=15)
                             
                             if "Exam Type" not in brain_df.columns:
                                 brain_df["Exam Type"] = "Practice"
@@ -1069,7 +1074,6 @@ else:
                             }])
                             updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                             conn.update(worksheet="Scores", data=updated_scores)
-                            st.cache_data.clear() # CACHE WIPE ON SUBMISSION
                         except Exception as e:
                             st.error(f"Could not save score: {e}")
 
@@ -1126,14 +1130,15 @@ else:
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     
                     # 1. CHECK FOR ASSIGNED FINAL EXAMS
-                    settings_df = conn.read(worksheet="Exam_Settings", ttl=30)
+                    settings_df = conn.read(worksheet="Exam_Settings", ttl=15)
                     exam_available = False
                     
                     if not settings_df.empty and str(settings_df.iloc[0].get("Status", "")) == "Active":
                         exam_cls = str(settings_df.iloc[0].get("Class", "")).strip()
                         exam_brd = str(settings_df.iloc[0].get("Board", "")).strip()
                         
-                        if exam_cls == st.session_state.user_class and (exam_brd == st.session_state.user_board or exam_brd == "ALL"):
+                        if (exam_cls == st.session_state.user_class or exam_cls == "ALL") and \
+                           (exam_brd == st.session_state.user_board or exam_brd == "ALL"):
                             exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
                             try:
                                 exp_dt = pd.to_datetime(exp_str)
@@ -1149,7 +1154,7 @@ else:
                                 pass
 
                     if exam_available:
-                        scores_df = conn.read(worksheet="Scores", ttl=30)
+                        scores_df = conn.read(worksheet="Scores", ttl=15)
                         already_taken = False
                         if not scores_df.empty and "Name" in scores_df.columns:
                             mask = (scores_df["Name"] == st.session_state.user_name) & (scores_df["Subject"] == active_sub)
@@ -1168,13 +1173,21 @@ else:
                             st.write("When you are ready, click Start. The timer will begin immediately and you will enter Focus Mode.")
                             
                             if st.button("🚀 Start Final Exam", type="primary"):
-                                brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
+                                brain_df = conn.read(worksheet="Brain_Drive", ttl=15)
                                 
                                 if "Exam Type" not in brain_df.columns:
                                     brain_df["Exam Type"] = "Practice"
                                 e_col = brain_df["Exam Type"].astype(str).str.strip().str.title()
                                 
-                                subject_questions = brain_df[(brain_df["Class"] == exam_cls) & (brain_df["Subject"] == active_sub) & (e_col == "Final")]
+                                # FIX: Also handle "ALL" logic for question grabbing
+                                if exam_cls == "ALL" and exam_brd == "ALL":
+                                    subject_questions = brain_df[(brain_df["Subject"] == active_sub) & (e_col == "Final")]
+                                elif exam_cls == "ALL":
+                                    subject_questions = brain_df[(brain_df["Board"] == exam_brd) & (brain_df["Subject"] == active_sub) & (e_col == "Final")]
+                                elif exam_brd == "ALL":
+                                    subject_questions = brain_df[(brain_df["Class"] == exam_cls) & (brain_df["Subject"] == active_sub) & (e_col == "Final")]
+                                else:
+                                    subject_questions = brain_df[(brain_df["Class"] == exam_cls) & (brain_df["Board"] == exam_brd) & (brain_df["Subject"] == active_sub) & (e_col == "Final")]
                                 
                                 if len(subject_questions) > 0:
                                     sample_size = min(q_limit, len(subject_questions))
@@ -1190,7 +1203,7 @@ else:
                         st.write("No active final exams. Take a self-assessment practice quiz to test your readiness!")
                         st.write("---")
                         
-                        brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
+                        brain_df = conn.read(worksheet="Brain_Drive", ttl=15)
                         if "Class" in brain_df.columns and "Board" in brain_df.columns:
                             if "Exam Type" not in brain_df.columns:
                                 brain_df["Exam Type"] = "Practice"
@@ -1225,7 +1238,7 @@ else:
                         st.write("---")
                         st.subheader("📊 My Past Scores")
                         try:
-                            scores_df = conn.read(worksheet="Scores", ttl=30)
+                            scores_df = conn.read(worksheet="Scores", ttl=15)
                             if not scores_df.empty and "Name" in scores_df.columns:
                                 my_scores = scores_df[scores_df["Name"] == st.session_state.user_name]
                                 if not my_scores.empty:
