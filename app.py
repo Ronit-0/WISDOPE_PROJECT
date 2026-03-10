@@ -1012,14 +1012,19 @@ else:
                 if score >= (total * 0.8):
                     st.balloons()
                     
-                if st.button("🔄 Retake Practice Quiz"):
-                    del st.session_state.practice_questions
+                if st.button("🔄 Take Another Practice Quiz"):
+                    # Safely exit back to the lobby to fetch new questions
+                    st.session_state.practice_active = False
                     st.session_state.practice_completed = False
+                    if 'practice_questions' in st.session_state:
+                        del st.session_state.practice_questions
                     st.rerun()
+                    
                 if st.button("🚪 Exit Practice Mode"):
                     st.session_state.practice_active = False
                     st.session_state.practice_completed = False
-                    del st.session_state.practice_questions
+                    if 'practice_questions' in st.session_state:
+                        del st.session_state.practice_questions
                     st.rerun()
             else:
                 with st.form("practice_form"):
