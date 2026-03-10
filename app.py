@@ -5,6 +5,8 @@ import requests
 import base64
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+import time
+import json
 
 # 1. Force Dark Mode & Page Config
 st.set_page_config(page_title="Wisdope Academy", page_icon="🔬", layout="wide")
@@ -82,44 +84,37 @@ except Exception:
     pass 
 
 # ==========================================
-#       PERSISTENT SESSION MANAGER (10 MIN)
+#       PERSISTENT SESSION MANAGER
 # ==========================================
-import time
-import json
-import base64
-
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# 1. Restore login if they refreshed the page within the 10-minute window
 if not st.session_state.logged_in and "session_token" in st.query_params:
     try:
         token = st.query_params["session_token"]
         decoded_bytes = base64.b64decode(token.encode('utf-8'))
         session_data = json.loads(decoded_bytes.decode('utf-8'))
         
-        # Check if current time is still before the expiry time
         if time.time() < session_data["expiry"]:
             st.session_state.logged_in = True
             st.session_state.user_name = session_data["name"]
             st.session_state.user_class = session_data["class"]
+            st.session_state.user_board = session_data.get("board", "")
             st.session_state.user_dob = session_data.get("dob", "")
         else:
-            # 10 minutes passed! Delete the token so they stay logged out
             del st.query_params["session_token"]
     except:
         del st.query_params["session_token"]
 
-# 2. Keep refreshing the 10-minute timer as long as they are active
 if st.session_state.logged_in:
-    expiry_time = time.time() + 600 # 600 seconds = 10 minutes
+    expiry_time = time.time() + 600 
     session_data = {
         "name": st.session_state.user_name,
         "class": st.session_state.user_class,
+        "board": st.session_state.get("user_board", ""),
         "dob": st.session_state.get("user_dob", ""),
         "expiry": expiry_time
     }
-    # Encode it so it looks like a professional, secure token in the URL
     token_bytes = json.dumps(session_data).encode('utf-8')
     st.query_params["session_token"] = base64.b64encode(token_bytes).decode('utf-8')
 
@@ -127,18 +122,17 @@ if st.session_state.logged_in:
 #               PUBLIC WEBSITE
 # ==========================================
 if not st.session_state.logged_in:
-    # --- ADDED THE TEAM TAB HERE ---
     tab1, tab2, tab3, tab_team, tab_leader, tab4, tab5, tab6 = st.tabs([
         "🌟 Why Join Us?", 
         "📚 Course Details", 
         "📸 Gallery", 
-        "🤝 Our Team",
+        "🔮 Our Team",
         "🏆 Leaderboard", 
         "📍 Contact & Location", 
         "🚀 Join Wisdope", 
         "🔐 Student Login"
     ])
-    
+
     with tab1:
         st.header("Why join WISDOPE?")
         features = [
@@ -228,11 +222,9 @@ if not st.session_state.logged_in:
                 components.html(full_html, height=550)
         except Exception as e:
             img_path = "images/IMG_8148.PNG"
-            import os
-            from PIL import Image
             if os.path.exists(img_path):
                 st.image(Image.open(img_path), caption="Students during theory and practical session", use_container_width=True)
-    # --- NEW: ELITE MYSTIC TEAM TAB ---
+                
     with tab_team:
         st.header("🔮 Meet the Wisdope Team")
         st.write("The elite professionals working behind the scenes to bring you the best education.")
@@ -298,7 +290,7 @@ if not st.session_state.logged_in:
             letter-spacing: 1px;
             margin-bottom: 0px;
             margin-top: 0;
-            min-height: 20px; 
+            min-height: 40px; 
             display: flex;
             align-items: center;
             justify-content: center;
@@ -352,12 +344,12 @@ if not st.session_state.logged_in:
                 <img class="team-img" src="https://img.icons8.com/3d-fluency/150/user-male-circle.png" alt="Ronit Das">
                 <h3 class="team-name">Ronit Das</h3>
                 <div class="team-role">Digital Architect</div>
-                <p class="team-desc">The technical architect behind the Wisdope digital platform and Learning Management System.</p>
+                <p class="team-desc">The technical mastermind behind the Wisdope digital platform and Learning Management System.</p>
             </div>
         </div>
         """
         st.markdown(team_html, unsafe_allow_html=True)
-    # --- NEW: LEADERBOARD TAB ---
+        
     with tab_leader:
         st.header("🌟 Wisdope Hall of Fame")
         st.write("Recognizing outstanding performance, hard work, and dedication!")
@@ -366,25 +358,21 @@ if not st.session_state.logged_in:
         try:
             from streamlit_gsheets import GSheetsConnection
             conn = st.connection("gsheets", type=GSheetsConnection)
-            leader_df = conn.read(worksheet="Leaderboard", ttl=60) # Refreshes every 60 seconds
+            leader_df = conn.read(worksheet="Leaderboard", ttl=60) 
             
-            # Check if there's actually a winner listed
             if not leader_df.empty and str(leader_df.iloc[0]["Name"]).lower() not in ["nan", "none", ""]:
                 star_name = str(leader_df.iloc[0]["Name"]).strip()
                 star_batch = str(leader_df.iloc[0]["Batch"]).strip()
                 star_msg = str(leader_df.iloc[0]["Message"]).strip()
                 
-                # Safely extract the Image URL if it exists
                 star_img = ""
                 if "Image_URL" in leader_df.columns:
                     val = str(leader_df.iloc[0]["Image_URL"]).strip()
                     if val.lower() not in ["nan", "none", ""]:
                         star_img = val
                 
-                # If there is an image, make a circular profile pic. If not, use the Trophy icon.
                 img_html = f'<img src="{star_img}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #FFD700; margin-bottom: 10px;">' if star_img else '<h1 style="margin-bottom: 0px; font-size: 60px;">🏆</h1>'
                 
-                # A beautiful gold-bordered card for the winner
                 st.markdown(f"""
                 <div style="display: flex; justify-content: center; margin-top: 20px;">
                     <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 4px; border-radius: 15px; width: 100%; max-width: 600px; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
@@ -469,6 +457,7 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.user_name = "Rishav Sir"
                         st.session_state.user_class = "ADMIN"
+                        st.session_state.user_board = "ADMIN"
                         st.rerun()
                     else:
                         try:
@@ -484,8 +473,15 @@ if not st.session_state.logged_in:
                             
                             if not user_match.empty:
                                 st.session_state.logged_in = True
-                                st.session_state.user_name = user_match.iloc[0]["Student Name"]
-                                st.session_state.user_class = user_match.iloc[0]["Class"]
+                                st.session_state.user_name = str(user_match.iloc[0]["Student Name"]).strip()
+                                st.session_state.user_class = str(user_match.iloc[0]["Class"]).strip()
+                                
+                                # Fetch Board Dynamics
+                                if "Board" in df.columns:
+                                    st.session_state.user_board = str(user_match.iloc[0]["Board"]).strip()
+                                else:
+                                    st.session_state.user_board = "ALL"
+                                    
                                 if "Date of Birth" in df.columns:
                                     st.session_state.user_dob = str(user_match.iloc[0]["Date of Birth"]).strip()
                                 else:
@@ -494,7 +490,7 @@ if not st.session_state.logged_in:
                             else:
                                 st.error("Invalid email or password.")
                         except Exception as e:
-                            st.error(f"Login Error (Make sure 'Students' tab exists): {str(e)}")
+                            st.error(f"Login Error (Make sure 'Students' tab exists with Board column): {str(e)}")
                 else:
                     st.warning("Please enter both fields.")
 
@@ -509,7 +505,6 @@ else:
     with top_col2:
         if st.button("🚪 Log Out", type="primary", use_container_width=True):
             st.session_state.logged_in = False
-            # Destroy the URL token instantly
             if "session_token" in st.query_params:
                 del st.query_params["session_token"]
             st.rerun()
@@ -537,49 +532,57 @@ else:
                 from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 df_mat = conn.read(worksheet="Materials", ttl=0) 
-                if 'Chapter' not in df_mat.columns: df_mat['Chapter'] = "General"
             except Exception:
-                df_mat = pd.DataFrame(columns=["Class", "Subject", "Chapter", "Link"])
+                df_mat = pd.DataFrame(columns=["Class", "Board", "Subject", "Chapter", "Link"])
 
+            # Class Dropdown
             default_classes = ["XII", "XI", "X", "IX", "VIII"]
             db_classes = df_mat["Class"].dropna().unique().tolist() if not df_mat.empty else []
             admin_class_options = sorted(list(set(default_classes + db_classes))) + ["+ Add New Class"]
             selected_class = st.selectbox("1. Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
             final_class = st.text_input("Enter New Class", key=f"c_t_{st.session_state.reset_key}").strip() if selected_class == "+ Add New Class" else selected_class
             
+            # NEW: Board Dropdown
+            default_boards = ["CBSE", "ICSE/ISC", "WB", "ALL"]
+            db_boards = df_mat["Board"].dropna().unique().tolist() if "Board" in df_mat.columns else []
+            admin_board_options = sorted(list(set(default_boards + db_boards))) + ["+ Add New Board"]
+            selected_board = st.selectbox("2. Target Board", admin_board_options, key=f"b_drop_{st.session_state.reset_key}")
+            final_board = st.text_input("Enter New Board", key=f"b_t_{st.session_state.reset_key}").strip() if selected_board == "+ Add New Board" else selected_board
+
+            # Subject Dropdown
             default_subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
-            db_subjects = df_mat["Subject"].dropna().unique().tolist() if not df_mat.empty else []
+            db_subjects = df_mat["Subject"].dropna().unique().tolist() if "Subject" in df_mat.columns else []
             admin_subject_options = sorted(list(set(default_subjects + db_subjects))) + ["+ Add New Subject"]
-            selected_subject = st.selectbox("2. Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
+            selected_subject = st.selectbox("3. Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
             final_subject = st.text_input("Enter New Subject", key=f"s_t_{st.session_state.reset_key}").strip() if selected_subject == "+ Add New Subject" else selected_subject
             
-            db_chapters = df_mat[(df_mat["Class"] == final_class) & (df_mat["Subject"] == final_subject)]["Chapter"].dropna().unique().tolist() if not df_mat.empty else []
-            admin_chapter_options = sorted(list(set(db_chapters))) + ["+ Add New Chapter"]
-            selected_chapter = st.selectbox("3. Chapter / Topic Name", admin_chapter_options, key=f"ch_drop_{st.session_state.reset_key}")
-            final_chapter = st.text_input("Enter New Chapter Name", key=f"ch_t_{st.session_state.reset_key}").strip() if selected_chapter == "+ Add New Chapter" else selected_chapter
-            
-            raw_link = st.text_input("4. Google Drive Share Link", key=f"l_{st.session_state.reset_key}").strip()
+            # Chapter & Link
+            final_chapter = st.text_input("4. Chapter / Topic Name", key=f"ch_t_{st.session_state.reset_key}").strip() 
+            raw_link = st.text_input("5. Google Drive Share Link", key=f"l_{st.session_state.reset_key}").strip()
             final_link = raw_link.replace("/view", "/preview").replace("/edit", "/preview") if raw_link else "Pending"
 
             if st.button("Publish Material", type="primary"):
-                if final_class and final_subject and final_chapter:
+                if final_class and final_board and final_subject and final_chapter:
                     try:
-                        mask = (df_mat["Class"].astype(str).str.strip() == final_class) & (df_mat["Subject"].astype(str).str.strip() == final_subject) & (df_mat["Chapter"].astype(str).str.strip() == final_chapter)
+                        mask = (df_mat.get("Class", pd.Series(dtype=str)).astype(str).str.strip() == final_class) & \
+                               (df_mat.get("Board", pd.Series(dtype=str)).astype(str).str.strip() == final_board) & \
+                               (df_mat.get("Subject", pd.Series(dtype=str)).astype(str).str.strip() == final_subject) & \
+                               (df_mat.get("Chapter", pd.Series(dtype=str)).astype(str).str.strip() == final_chapter)
                         if mask.any():
                             idx = df_mat[mask].index[0]
                             df_mat.at[idx, "Link"] = final_link
                             conn.update(worksheet="Materials", data=df_mat)
                         else:
-                            new_data = pd.DataFrame([{"Class": final_class, "Subject": final_subject, "Chapter": final_chapter, "Link": final_link}])
+                            new_data = pd.DataFrame([{"Class": final_class, "Board": final_board, "Subject": final_subject, "Chapter": final_chapter, "Link": final_link}])
                             updated_df = pd.concat([df_mat, new_data], ignore_index=True)
                             conn.update(worksheet="Materials", data=updated_df)
-                        st.session_state.publish_msg = f"✅ Published {final_chapter}!"
+                        st.session_state.publish_msg = f"✅ Published {final_chapter} for {final_board} ({final_class})!"
                         st.session_state.reset_key += 1 
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error: {e}")
                 else:
-                    st.warning("Please fill out Class, Subject, and Chapter.")
+                    st.warning("Please fill out Class, Board, Subject, and Chapter.")
 
         with admin_tab2:
             st.subheader("Add Photos to Gallery")
@@ -620,7 +623,6 @@ else:
 
         with admin_tab3:
             st.subheader("👥 Active Student Directory")
-            st.write("Click the button next to their name to automatically send their monthly password via WhatsApp.")
             try:
                 from streamlit_gsheets import GSheetsConnection
                 import urllib.parse
@@ -642,7 +644,6 @@ else:
                         
                         if len(clean_number) == 10: clean_number = "91" + clean_number
                         elif len(clean_number) == 11 and clean_number.startswith("0"): clean_number = "91" + clean_number[1:]
-                        elif len(clean_number) == 12 and clean_number.startswith("91"): pass
                         
                         msg = f"Hello {student_name}, your Wisdope Academy fee is received. Your password for this month is: {student_pass}"
                         encoded_msg = urllib.parse.quote(msg)
@@ -698,8 +699,6 @@ else:
 
         with admin_tab5:
             st.subheader("🌟 Update Star Student")
-            st.write("Feature a top-performing student on the public Leaderboard.")
-            
             star_input = st.text_input("Student Name (e.g., Ronit Das):")
             batch_input = st.text_input("Batch/Class (e.g., Class XII):")
             msg_input = st.text_area("Achievement / Custom Message (e.g., 'Highest score in the Physics mock test!'):")
@@ -751,7 +750,7 @@ else:
                     except Exception as e:
                         st.error(f"Database Error: {e}")
 
-        # --- NEW: ADMIN EXAM PANEL WITH DYNAMIC QUESTION LIMIT ---
+        # --- NEW: ADVANCED TARGETED EXAM DEPLOYMENT ---
         with admin_tab6:
             st.subheader("🧠 Deploy Brain Drive Exam")
             try:
@@ -761,62 +760,86 @@ else:
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 
                 ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
-                settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
                 
-                # Check for currently active exams and show countdown for the link
-                if not settings_df.empty and str(settings_df.iloc[0]["Status"]) == "Active":
+                try:
+                    settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
+                except:
+                    st.error("Please add 'Board' and 'Class' columns to your Exam_Settings sheet!")
+                    settings_df = pd.DataFrame()
+                
+                # Active Exam Monitor
+                if not settings_df.empty and str(settings_df.iloc[0].get("Status", "")) == "Active":
                     exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
+                    exam_sub = str(settings_df.iloc[0].get("Subject", ""))
+                    exam_cls = str(settings_df.iloc[0].get("Class", ""))
+                    exam_brd = str(settings_df.iloc[0].get("Board", ""))
                     try:
                         exp_dt = pd.to_datetime(exp_str)
                         if ist_now < exp_dt:
                             rem_mins = int((exp_dt - ist_now).total_seconds() / 60)
                             st.markdown(f"""
                             <div style="background-color: rgba(0, 255, 0, 0.1); border: 2px solid #00FF00; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                                <h3 style="color: #00FF00; margin-top: 0px;">✅ ACTIVE EXAM: {settings_df.iloc[0]["Subject"]}</h3>
-                                <p style="font-size: 16px; margin-bottom: 0px;">Link disappears from student portals in: <b>{rem_mins} Minutes</b> (At {exp_dt.strftime('%I:%M %p')})</p>
+                                <h3 style="color: #00FF00; margin-top: 0px;">✅ ACTIVE EXAM: {exam_sub}</h3>
+                                <p style="font-size: 16px; margin-bottom: 5px;">Targeting: <b>Class {exam_cls} | {exam_brd}</b></p>
+                                <p style="font-size: 14px; margin-bottom: 0px; color: #B0A8B9;">Link disappears from student portals in: <b>{rem_mins} Minutes</b> (At {exp_dt.strftime('%I:%M %p')})</p>
                             </div>
                             """, unsafe_allow_html=True)
                             
                             if st.button("🛑 Force Stop Exam Early"):
-                                conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Subject": "", "Duration": "", "Retake": "", "Expires_At": "", "Question_Limit": ""}]))
+                                conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Board":"", "Class":"", "Subject": "", "Duration": "", "Retake": "", "Expires_At": "", "Question_Limit": ""}]))
                                 st.rerun()
                     except:
                         pass
                 
                 st.write("---")
-                # Fetch available subjects
                 brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
-                available_subjects = brain_df["Subject"].dropna().unique().tolist() if "Subject" in brain_df.columns else []
                 
-                if available_subjects:
-                    st.write("**Deploy a New Exam**")
-                    exam_sub = st.selectbox("Select Subject to Test:", available_subjects)
+                col_c, col_b = st.columns(2)
+                with col_c:
+                    avail_classes = brain_df["Class"].dropna().unique().tolist() if "Class" in brain_df.columns else []
+                    set_cls = st.selectbox("Target Class:", avail_classes) if avail_classes else None
+                with col_b:
+                    avail_boards = brain_df["Board"].dropna().unique().tolist() if "Board" in brain_df.columns else []
+                    set_brd = st.selectbox("Target Board:", avail_boards + ["ALL"]) if avail_boards else None
+                
+                if set_cls and set_brd:
+                    # Filter questions based on selection to dynamically find subjects & max questions
+                    if set_brd == "ALL":
+                        filtered_q = brain_df[brain_df["Class"] == set_cls]
+                    else:
+                        filtered_q = brain_df[(brain_df["Class"] == set_cls) & (brain_df["Board"] == set_brd)]
                     
-                    # DYNAMIC LOGIC: Automatically count how many questions exist for the selected subject
-                    max_q = len(brain_df[brain_df["Subject"] == exam_sub])
-                    max_val = max_q if max_q > 0 else 1
-                    default_val = min(10, max_val)
+                    avail_subs = filtered_q["Subject"].dropna().unique().tolist()
                     
-                    exam_limit = st.number_input(f"How many questions should be asked? (Max available: {max_q})", min_value=1, max_value=max_val, value=default_val)
-                    exam_time = st.number_input("Time limit for student to write (Minutes):", min_value=1, max_value=60, value=20)
-                    exam_window = st.number_input("How long should the exam link stay open? (Minutes):", min_value=1, max_value=1440, value=60)
-                    exam_retake = st.checkbox("Allow students to retake the exam?", value=False)
-                    
-                    if st.button("🚀 Deploy Exam", type="primary"):
-                        expires_at = ist_now + timedelta(minutes=exam_window)
-                        settings = pd.DataFrame([{
-                            "Status": "Active", 
-                            "Subject": exam_sub, 
-                            "Duration": exam_time, 
-                            "Retake": str(exam_retake),
-                            "Expires_At": expires_at.strftime("%Y-%m-%d %H:%M:%S"),
-                            "Question_Limit": exam_limit
-                        }])
-                        conn.update(worksheet="Exam_Settings", data=settings)
-                        st.success(f"✅ Exam Deployed Successfully! It will automatically vanish at {expires_at.strftime('%I:%M %p')}.")
-                        st.rerun()
+                    if avail_subs:
+                        set_sub = st.selectbox("Select Subject to Test:", avail_subs)
+                        max_q = len(filtered_q[filtered_q["Subject"] == set_sub])
+                        max_val = max_q if max_q > 0 else 1
+                        
+                        exam_limit = st.number_input(f"Questions to ask? (Max available: {max_q})", min_value=1, max_value=max_val, value=min(10, max_val))
+                        exam_time = st.number_input("Time limit for student (Minutes):", min_value=1, max_value=60, value=20)
+                        exam_window = st.number_input("Exam link visibility window (Minutes):", min_value=1, max_value=1440, value=60)
+                        exam_retake = st.checkbox("Allow students to retake the exam?", value=False)
+                        
+                        if st.button("🚀 Deploy Targeted Exam", type="primary"):
+                            expires_at = ist_now + timedelta(minutes=exam_window)
+                            settings = pd.DataFrame([{
+                                "Status": "Active", 
+                                "Board": set_brd,
+                                "Class": set_cls,
+                                "Subject": set_sub, 
+                                "Duration": exam_time, 
+                                "Retake": str(exam_retake),
+                                "Expires_At": expires_at.strftime("%Y-%m-%d %H:%M:%S"),
+                                "Question_Limit": exam_limit
+                            }])
+                            conn.update(worksheet="Exam_Settings", data=settings)
+                            st.success(f"✅ Exam Deployed Successfully! It will vanish at {expires_at.strftime('%I:%M %p')}.")
+                            st.rerun()
+                    else:
+                        st.warning(f"No questions found for Class {set_cls} ({set_brd}) in the database.")
                 else:
-                    st.warning("No subjects found in the 'Brain_Drive' sheet. Please add questions first!")
+                    st.warning("Please add questions with Board and Class columns to the Brain_Drive sheet.")
                 
                 st.write("---")
                 st.subheader("📊 Live Exam Scores")
@@ -826,13 +849,14 @@ else:
                 else:
                     st.info("No scores recorded yet.")
             except Exception as e:
-                st.error(f"Please create the 'Exam_Settings' and 'Scores' sheets first. Error: {e}")
+                st.error(f"Error fetching data: {e}")
+
 
     # ------------------------------------------
     #            STUDENT DASHBOARD
     # ------------------------------------------
     else:
-        st.write(f"🎓 **Batch:** {st.session_state.user_class}")
+        st.markdown(f"🎓 **Class:** {st.session_state.user_class} | 🏫 **Board:** {st.session_state.user_board}")
         
         if st.session_state.get("user_dob") and st.session_state.user_dob.lower() not in ["nan", "none", ""]:
             try:
@@ -856,26 +880,20 @@ else:
         st.write("---")
 
         # ==========================================
-        #   ANTI-CHEAT FOCUS MODE (ACTIVE EXAM)
+        #   ANTI-CHEAT FOCUS MODE (ASSIGNED EXAM)
         # ==========================================
         if st.session_state.get("exam_active", False):
             st.warning("🚨 **EXAM IN PROGRESS - FOCUS MODE ACTIVE** 🚨")
             
-            # --- THE NEW POST-SUBMIT SCREEN ---
             if st.session_state.get("exam_completed", False):
                 st.success("✅ Exam Submitted Successfully!")
                 st.info("📊 Your exam has been securely saved. Results will be announced soon by Rishav Sir.")
-                
-                # Locks them here until they click this button
                 if st.button("🚪 Exit Focus Mode", type="primary", use_container_width=True):
                     st.session_state.exam_active = False
                     st.session_state.exam_completed = False
                     st.rerun()
-            
-            # --- THE LIVE EXAM ENGINE ---
             else:
                 st.write("All study materials and tabs are locked until you submit this exam.")
-                
                 try:
                     from streamlit_gsheets import GSheetsConnection
                     import pandas as pd
@@ -893,7 +911,6 @@ else:
                     rem_sec = int((end_time - ist_now).total_seconds())
                     
                     if rem_sec > 0:
-                        # Live Javascript countdown
                         timer_html = f"""
                         <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
                             ⏳ <span id="timer">{rem_sec // 60:02d}:{rem_sec % 60:02d}</span>
@@ -955,7 +972,6 @@ else:
                                 updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                                 conn.update(worksheet="Scores", data=updated_scores)
                                 
-                                # Do NOT exit focus mode yet. Just trigger the completion screen.
                                 st.session_state.exam_completed = True
                                 del st.session_state.exam_questions
                                 st.rerun()
@@ -981,6 +997,54 @@ else:
                             st.rerun()
                 except Exception as e:
                     st.error(f"Exam Rendering Error: {e}")
+                    
+        # ==========================================
+        #   SELF-ASSESSMENT PRACTICE MODE
+        # ==========================================
+        elif st.session_state.get("practice_active", False):
+            st.info("🧠 **PRACTICE MODE ACTIVE** - Test your knowledge at your own pace.")
+            
+            if st.session_state.get("practice_completed", False):
+                score = st.session_state.practice_score
+                total = st.session_state.practice_total
+                st.success(f"🎉 Practice Complete! You scored **{score} out of {total}**!")
+                
+                if score >= (total * 0.8):
+                    st.balloons()
+                    
+                if st.button("🔄 Retake Practice Quiz"):
+                    del st.session_state.practice_questions
+                    st.session_state.practice_completed = False
+                    st.rerun()
+                if st.button("🚪 Exit Practice Mode"):
+                    st.session_state.practice_active = False
+                    st.session_state.practice_completed = False
+                    del st.session_state.practice_questions
+                    st.rerun()
+            else:
+                with st.form("practice_form"):
+                    user_answers = {}
+                    for i, q in enumerate(st.session_state.practice_questions):
+                        st.write(f"**Q{i+1}: {q['Question']}**")
+                        options = [str(q['Option A']), str(q['Option B']), str(q['Option C']), str(q['Option D'])]
+                        options = [opt for opt in options if opt.lower() != 'nan']
+                        
+                        user_answers[i] = st.radio("Select an answer:", options, key=f"p_{i}", index=None)
+                        st.write("---")
+                        
+                    submitted = st.form_submit_button("Submit Practice", type="primary")
+                    if submitted:
+                        score = 0
+                        total = len(st.session_state.practice_questions)
+                        for i, q in enumerate(st.session_state.practice_questions):
+                            correct_ans = str(q['Correct Answer']).strip().lower()
+                            chosen_ans = str(user_answers[i]).strip().lower() if user_answers[i] else ""
+                            if chosen_ans == correct_ans: score += 1
+                        
+                        st.session_state.practice_score = score
+                        st.session_state.practice_total = total
+                        st.session_state.practice_completed = True
+                        st.rerun()
 
         # ==========================================
         #       NORMAL STUDENT DASHBOARD (TABS)
@@ -988,34 +1052,55 @@ else:
         else:
             stud_tab1, stud_tab2, stud_tab3 = st.tabs(["📚 Study Materials", "🧠 Brain Drive", "📢 Notice Board"])
             
+            # --- TAB 1: DYNAMIC STUDY MATERIALS ---
             with stud_tab1:
                 try:
                     from streamlit_gsheets import GSheetsConnection
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     m_df = conn.read(worksheet="Materials", ttl=0) 
-                    if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
-                        
-                    c_mat = m_df[m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
-                    student_subs = sorted(list(set(c_mat["Subject"].tolist() if not c_mat.empty else [])))
                     
-                    if not student_subs:
+                    # Ensure columns exist to prevent crashes
+                    if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
+                    if 'Board' not in m_df.columns: m_df['Board'] = "ALL"
+                        
+                    # Filter by the student's Class
+                    c_mat = m_df[m_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
+                    
+                    # NEW: Dropdown for Board (Defaults to student's Board, but they can view others)
+                    avail_boards = sorted(list(set(c_mat["Board"].dropna().astype(str).tolist())))
+                    
+                    if not avail_boards:
                         st.info("No materials available for your class yet.")
                     else:
-                        sel_sub = st.selectbox("1. Choose a subject:", student_subs)
-                        if sel_sub:
-                            sub_match = c_mat[c_mat["Subject"] == sel_sub]
-                            chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
-                            sel_chap = st.selectbox("2. Choose a chapter/topic:", chapter_list)
-                            if sel_chap:
-                                final_match = sub_match[sub_match["Chapter"] == sel_chap]
-                                if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
-                                    st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
-                                else:
-                                    st.info("Materials for this chapter are coming soon!")
-                except Exception:
-                    st.error("Database Error. Please contact Rishav Sir.")
+                        # Try to set the default index to the student's board if it exists
+                        default_index = 0
+                        if st.session_state.user_board in avail_boards:
+                            default_index = avail_boards.index(st.session_state.user_board)
+                            
+                        sel_board = st.selectbox("1. Choose Board:", avail_boards, index=default_index)
+                        
+                        if sel_board:
+                            b_mat = c_mat[(c_mat["Board"] == sel_board) | (c_mat["Board"] == "ALL")]
+                            student_subs = sorted(list(set(b_mat["Subject"].tolist() if not b_mat.empty else [])))
+                            
+                            if not student_subs:
+                                st.info(f"No materials found for {sel_board}.")
+                            else:
+                                sel_sub = st.selectbox("2. Choose a subject:", student_subs)
+                                if sel_sub:
+                                    sub_match = b_mat[b_mat["Subject"] == sel_sub]
+                                    chapter_list = sorted(list(set(sub_match["Chapter"].tolist() if not sub_match.empty else [])))
+                                    sel_chap = st.selectbox("3. Choose a chapter/topic:", chapter_list)
+                                    if sel_chap:
+                                        final_match = sub_match[sub_match["Chapter"] == sel_chap]
+                                        if not final_match.empty and str(final_match.iloc[0]["Link"]).startswith("http"):
+                                            st.markdown(f'<iframe src="{final_match.iloc[0]["Link"]}" style="width: 100%; height: 700px; border:none; border-radius: 8px;"></iframe>', unsafe_allow_html=True)
+                                        else:
+                                            st.info("Materials for this chapter are coming soon!")
+                except Exception as e:
+                    st.error(f"Database Error: {e}")
 
-            # --- TAB 2: BRAIN DRIVE WAITING ROOM ---
+            # --- TAB 2: ADVANCED BRAIN DRIVE ---
             with stud_tab2:
                 st.subheader("🧠 Brain Drive")
                 
@@ -1027,23 +1112,29 @@ else:
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     
+                    # 1. CHECK FOR ASSIGNED FINAL EXAMS FIRST
                     settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
                     exam_available = False
                     
-                    if not settings_df.empty and str(settings_df.iloc[0]["Status"]) == "Active":
-                        exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
-                        try:
-                            exp_dt = pd.to_datetime(exp_str)
-                            if ist_now < exp_dt:
-                                exam_available = True
-                                active_sub = str(settings_df.iloc[0]["Subject"])
-                                time_limit = int(settings_df.iloc[0]["Duration"])
-                                allow_retake = str(settings_df.iloc[0]["Retake"]).lower() == "true"
-                                
-                                q_limit_raw = settings_df.iloc[0].get("Question_Limit", 10)
-                                q_limit = int(q_limit_raw) if pd.notna(q_limit_raw) and str(q_limit_raw).strip() != "" else 10
-                        except:
-                            pass
+                    if not settings_df.empty and str(settings_df.iloc[0].get("Status", "")) == "Active":
+                        exam_cls = str(settings_df.iloc[0].get("Class", "")).strip()
+                        exam_brd = str(settings_df.iloc[0].get("Board", "")).strip()
+                        
+                        # Only show if the exam matches the student's Class AND (Board or "ALL")
+                        if exam_cls == st.session_state.user_class and (exam_brd == st.session_state.user_board or exam_brd == "ALL"):
+                            exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
+                            try:
+                                exp_dt = pd.to_datetime(exp_str)
+                                if ist_now < exp_dt:
+                                    exam_available = True
+                                    active_sub = str(settings_df.iloc[0]["Subject"])
+                                    time_limit = int(settings_df.iloc[0]["Duration"])
+                                    allow_retake = str(settings_df.iloc[0]["Retake"]).lower() == "true"
+                                    
+                                    q_limit_raw = settings_df.iloc[0].get("Question_Limit", 10)
+                                    q_limit = int(q_limit_raw) if pd.notna(q_limit_raw) and str(q_limit_raw).strip() != "" else 10
+                            except:
+                                pass
 
                     if exam_available:
                         scores_df = conn.read(worksheet="Scores", ttl=0)
@@ -1055,12 +1146,18 @@ else:
                         if already_taken and not allow_retake:
                             st.warning("You have already completed this exam. Retakes are currently disabled by Rishav Sir.")
                         else:
-                            st.info(f"📝 **New Exam Assigned:** {active_sub} | ⏱️ **Time Limit:** {time_limit} Mins | ❓ **Questions:** {q_limit}")
-                            st.write("When you are ready, click Start. The timer will begin immediately and you will not be able to access your study materials.")
+                            st.markdown(f"""
+                            <div style="background-color: rgba(255, 0, 0, 0.1); border-left: 5px solid red; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                                <h3 style="color: red; margin-top: 0px;">🚨 ASSIGNED EXAM: {active_sub}</h3>
+                                <p style="font-size: 16px; margin-bottom: 0px;"><b>Time Limit:</b> {time_limit} Mins | <b>Questions:</b> {q_limit}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
-                            if st.button("🚀 Start Exam", type="primary"):
+                            st.write("When you are ready, click Start. The timer will begin immediately and you will enter Focus Mode.")
+                            
+                            if st.button("🚀 Start Final Exam", type="primary"):
                                 brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
-                                subject_questions = brain_df[brain_df["Subject"] == active_sub]
+                                subject_questions = brain_df[(brain_df["Class"] == exam_cls) & (brain_df["Subject"] == active_sub)]
                                 
                                 if len(subject_questions) > 0:
                                     sample_size = min(q_limit, len(subject_questions))
@@ -1070,16 +1167,50 @@ else:
                                     st.rerun()
                                 else:
                                     st.error("Error: No questions found for this subject.")
+                    
+                    # 2. SELF ASSESSMENT (PRACTICE) IF NO ASSIGNED EXAM
                     else:
-                        st.info("No active exams right now. Take a break and study your materials!")
+                        st.write("No active final exams. Take a self-assessment practice quiz to test your readiness!")
+                        st.write("---")
+                        
+                        brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                        if "Class" in brain_df.columns and "Board" in brain_df.columns:
+                            # Filter questions for their specific class
+                            my_class_q = brain_df[brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()]
+                            
+                            if my_class_q.empty:
+                                st.info(f"No practice questions available yet for Class {st.session_state.user_class}.")
+                            else:
+                                col_pb, col_ps = st.columns(2)
+                                with col_pb:
+                                    p_boards = my_class_q["Board"].dropna().unique().tolist()
+                                    def_b_idx = p_boards.index(st.session_state.user_board) if st.session_state.user_board in p_boards else 0
+                                    prac_board = st.selectbox("Select Board to practice:", p_boards, index=def_b_idx) if p_boards else None
+                                
+                                if prac_board:
+                                    with col_ps:
+                                        board_q = my_class_q[my_class_q["Board"] == prac_board]
+                                        p_subs = board_q["Subject"].dropna().unique().tolist()
+                                        prac_sub = st.selectbox("Select Subject:", p_subs) if p_subs else None
+                                        
+                                    if prac_sub:
+                                        if st.button("📝 Start 10-Question Practice"):
+                                            sub_pool = board_q[board_q["Subject"] == prac_sub]
+                                            sample_size = min(10, len(sub_pool))
+                                            st.session_state.practice_questions = sub_pool.sample(n=sample_size).to_dict('records')
+                                            st.session_state.practice_active = True
+                                            st.session_state.practice_completed = False
+                                            st.rerun()
+                        else:
+                            st.info("Brain Drive is currently undergoing database updates.")
                         
                 except Exception as e:
-                    st.info("The Brain Drive module is being setup by Rishav Sir. Check back later.")
+                    st.info(f"Brain Drive Module Check: {e}")
 
             # --- TAB 3: NOTICE BOARD ---
             with stud_tab3:
                 st.subheader("📢 Notice Board")
-                st.write("If using samrtphone use desktop site for better view")
+                st.write("If using smartphone, use desktop site for better view.")
                 notice_url = st.secrets["admin"]["notice_board"]
                 st.markdown(
                     f'''
