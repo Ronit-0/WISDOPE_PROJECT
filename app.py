@@ -158,6 +158,8 @@ if not st.session_state.logged_in:
         st.header("📸 Some Glimpses of Our Coaching Institute")
         st.write("---")
         try:
+            # THIS IS FIXED: Moved outside the HTML string
+            import streamlit.components.v1 as components 
             conn = st.connection("gsheets", type=GSheetsConnection)
             gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=60)
             gallery_images = gallery_df["Image_URL"].dropna().tolist()
@@ -198,7 +200,6 @@ if not st.session_state.logged_in:
                   <a class="next" onclick="plusSlides(1)">❯</a>
                 </div>
                 <script>
-                import streamlit.components.v1 as components
                 let slideIndex = 1; let timer; showSlides(slideIndex);
                 function plusSlides(n) {{ clearTimeout(timer); showSlides(slideIndex += n); }}
                 function showSlides(n) {{
@@ -217,6 +218,8 @@ if not st.session_state.logged_in:
                 components.html(full_html, height=550)
         except Exception as e:
             img_path = "images/IMG_8148.PNG"
+            import os
+            from PIL import Image
             if os.path.exists(img_path):
                 st.image(Image.open(img_path), caption="Students during theory and practical session", use_container_width=True)
                 
