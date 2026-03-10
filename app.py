@@ -542,7 +542,7 @@ else:
             selected_class = st.selectbox("1. Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
             final_class = st.text_input("Enter New Class", key=f"c_t_{st.session_state.reset_key}").strip() if selected_class == "+ Add New Class" else selected_class
             
-            # NEW: Board Dropdown
+            # Board Dropdown
             default_boards = ["CBSE", "ICSE/ISC", "WB", "ALL"]
             db_boards = df_mat["Board"].dropna().unique().tolist() if "Board" in df_mat.columns else []
             admin_board_options = sorted(list(set(default_boards + db_boards))) + ["+ Add New Board"]
@@ -750,7 +750,7 @@ else:
                     except Exception as e:
                         st.error(f"Database Error: {e}")
 
-        # --- NEW: ADVANCED TARGETED EXAM DEPLOYMENT ---
+        # --- NEW: VAULT SECURED EXAM DEPLOYMENT ---
         with admin_tab6:
             st.subheader("🧠 Deploy Brain Drive Exam")
             try:
@@ -794,20 +794,26 @@ else:
                 st.write("---")
                 brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
                 
+                # Vault Security Check: Ensure Exam Type exists
+                if "Exam Type" not in brain_df.columns:
+                    brain_df["Exam Type"] = "Practice"
+                
+                # Filter ONLY "Final" questions for the Admin Deployer
+                vault_q = brain_df[brain_df["Exam Type"].astype(str).str.strip().str.title() == "Final"]
+                
                 col_c, col_b = st.columns(2)
                 with col_c:
-                    avail_classes = brain_df["Class"].dropna().unique().tolist() if "Class" in brain_df.columns else []
+                    avail_classes = vault_q["Class"].dropna().unique().tolist() if not vault_q.empty else []
                     set_cls = st.selectbox("Target Class:", avail_classes) if avail_classes else None
                 with col_b:
-                    avail_boards = brain_df["Board"].dropna().unique().tolist() if "Board" in brain_df.columns else []
+                    avail_boards = vault_q["Board"].dropna().unique().tolist() if not vault_q.empty else []
                     set_brd = st.selectbox("Target Board:", avail_boards + ["ALL"]) if avail_boards else None
                 
                 if set_cls and set_brd:
-                    # Filter questions based on selection to dynamically find subjects & max questions
                     if set_brd == "ALL":
-                        filtered_q = brain_df[brain_df["Class"] == set_cls]
+                        filtered_q = vault_q[vault_q["Class"] == set_cls]
                     else:
-                        filtered_q = brain_df[(brain_df["Class"] == set_cls) & (brain_df["Board"] == set_brd)]
+                        filtered_q = vault_q[(vault_q["Class"] == set_cls) & (vault_q["Board"] == set_brd)]
                     
                     avail_subs = filtered_q["Subject"].dropna().unique().tolist()
                     
@@ -837,9 +843,9 @@ else:
                             st.success(f"✅ Exam Deployed Successfully! It will vanish at {expires_at.strftime('%I:%M %p')}.")
                             st.rerun()
                     else:
-                        st.warning(f"No questions found for Class {set_cls} ({set_brd}) in the database.")
+                        st.warning(f"No Final Exam questions found for Class {set_cls} ({set_brd}).")
                 else:
-                    st.warning("Please add questions with Board and Class columns to the Brain_Drive sheet.")
+                    st.warning("No Final Exam questions found in the Vault. Please add rows with 'Exam Type' set to 'Final'.")
                 
                 st.write("---")
                 st.subheader("📊 Live Exam Scores")
@@ -1012,7 +1018,6 @@ else:
                 if score >= (total * 0.8):
                     st.balloons()
                     
-                # --- UPGRADED RETAKE BUTTON (STAYS IN FOCUS MODE) ---
                 if st.button("🔄 Retake This Subject"):
                     with st.spinner("Shuffling new questions..."):
                         try:
@@ -1023,16 +1028,22 @@ else:
                             conn = st.connection("gsheets", type=GSheetsConnection)
                             brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
                             
+                            # Vault Security Check
+                            if "Exam Type" not in brain_df.columns:
+                                brain_df["Exam Type"] = "Practice"
+                                
+                            e_col = brain_df["Exam Type"].astype(str).str.strip().str.title()
                             b_col = brain_df["Board"].astype(str).str.strip().str.upper()
                             user_b = str(st.session_state.user_board).strip().upper()
                             
+                            # MUST be labeled "Practice"
                             my_class_q = brain_df[(brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()) &
-                                                  ((b_col == user_b) | (b_col == "ALL") | (b_col == ""))]
+                                                  ((b_col == user_b) | (b_col == "ALL") | (b_col == "")) &
+                                                  (e_col == "Practice")]
                                                   
                             sub_pool = my_class_q[my_class_q["Subject"] == st.session_state.practice_sub]
                             sample_size = min(10, len(sub_pool))
                             
-                            # Give them 10 brand new random questions
                             st.session_state.practice_questions = sub_pool.sample(n=sample_size).to_dict('records')
                             st.session_state.practice_completed = False
                             st.session_state.practice_start_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -1071,7 +1082,6 @@ else:
                         
                         percentage = round((score / total) * 100, 2)
                         
-                        # SAVE PRACTICE SCORE TO DATABASE
                         try:
                             from streamlit_gsheets import GSheetsConnection
                             import pandas as pd
@@ -1096,13 +1106,13 @@ else:
                         st.session_state.practice_total = total
                         st.session_state.practice_completed = True
                         st.rerun()
+
         # ==========================================
         #       NORMAL STUDENT DASHBOARD (TABS)
         # ==========================================
         else:
             stud_tab1, stud_tab2, stud_tab3 = st.tabs(["📚 Study Materials", "🧠 Brain Drive", "📢 Notice Board"])
             
-            # --- TAB 1: STRICTLY FILTERED STUDY MATERIALS ---
             with stud_tab1:
                 try:
                     from streamlit_gsheets import GSheetsConnection
@@ -1112,7 +1122,6 @@ else:
                     if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
                     if 'Board' not in m_df.columns: m_df['Board'] = "ALL"
                         
-                    # STRICT FILTER: Only show materials for their Class AND their Board (or "ALL")
                     b_col = m_df["Board"].astype(str).str.strip().str.upper()
                     user_b = str(st.session_state.user_board).strip().upper()
                     
@@ -1138,7 +1147,6 @@ else:
                 except Exception as e:
                     st.error(f"Database Error: {e}")
 
-            # --- TAB 2: STRICTLY FILTERED BRAIN DRIVE ---
             with stud_tab2:
                 st.subheader("🧠 Brain Drive")
                 
@@ -1158,7 +1166,6 @@ else:
                         exam_cls = str(settings_df.iloc[0].get("Class", "")).strip()
                         exam_brd = str(settings_df.iloc[0].get("Board", "")).strip()
                         
-                        # Only show if the exam matches the student's Class AND (Board or "ALL")
                         if exam_cls == st.session_state.user_class and (exam_brd == st.session_state.user_board or exam_brd == "ALL"):
                             exp_str = str(settings_df.iloc[0].get("Expires_At", ""))
                             try:
@@ -1195,7 +1202,13 @@ else:
                             
                             if st.button("🚀 Start Final Exam", type="primary"):
                                 brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
-                                subject_questions = brain_df[(brain_df["Class"] == exam_cls) & (brain_df["Subject"] == active_sub)]
+                                
+                                # VAULT SECURITY CHECK: ONLY "FINAL" QUESTIONS
+                                if "Exam Type" not in brain_df.columns:
+                                    brain_df["Exam Type"] = "Practice"
+                                e_col = brain_df["Exam Type"].astype(str).str.strip().str.title()
+                                
+                                subject_questions = brain_df[(brain_df["Class"] == exam_cls) & (brain_df["Subject"] == active_sub) & (e_col == "Final")]
                                 
                                 if len(subject_questions) > 0:
                                     sample_size = min(q_limit, len(subject_questions))
@@ -1204,7 +1217,7 @@ else:
                                     st.session_state.exam_start_time = ist_now
                                     st.rerun()
                                 else:
-                                    st.error("Error: No questions found for this subject.")
+                                    st.error("Error: No 'Final' questions found in the vault for this subject.")
                     
                     # 2. SELF ASSESSMENT (PRACTICE)
                     else:
@@ -1213,12 +1226,18 @@ else:
                         
                         brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
                         if "Class" in brain_df.columns and "Board" in brain_df.columns:
-                            # STRICT FILTER: Only show Practice Questions for their Class AND Board
+                            # Vault Security Check
+                            if "Exam Type" not in brain_df.columns:
+                                brain_df["Exam Type"] = "Practice"
+                            
+                            e_col = brain_df["Exam Type"].astype(str).str.strip().str.title()
                             b_col = brain_df["Board"].astype(str).str.strip().str.upper()
                             user_b = str(st.session_state.user_board).strip().upper()
                             
+                            # ONLY "PRACTICE" QUESTIONS
                             my_class_q = brain_df[(brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()) &
-                                                  ((b_col == user_b) | (b_col == "ALL") | (b_col == ""))]
+                                                  ((b_col == user_b) | (b_col == "ALL") | (b_col == "")) &
+                                                  (e_col == "Practice")]
                             
                             if my_class_q.empty:
                                 st.info(f"No practice questions available yet for Class {st.session_state.user_class} ({st.session_state.user_board}).")
@@ -1239,7 +1258,6 @@ else:
                         else:
                             st.info("Brain Drive is currently undergoing database updates.")
                         
-                        # --- NEW: DISPLAY PERSONAL PAST SCORES ---
                         st.write("---")
                         st.subheader("📊 My Past Scores")
                         try:
@@ -1247,7 +1265,6 @@ else:
                             if not scores_df.empty and "Name" in scores_df.columns:
                                 my_scores = scores_df[scores_df["Name"] == st.session_state.user_name]
                                 if not my_scores.empty:
-                                    # Show only relevant columns to the student
                                     display_scores = my_scores[["Subject", "Start Time", "Score", "Percentage"]].copy()
                                     st.dataframe(display_scores, hide_index=True, use_container_width=True)
                                 else:
