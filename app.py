@@ -59,11 +59,8 @@ st.write("---")
 #         URGENT NEWS TICKER (GLOBAL)
 # ==========================================
 try:
-    from streamlit_gsheets import GSheetsConnection
-    import pandas as pd
-    from datetime import datetime, timedelta
-    
     conn = st.connection("gsheets", type=GSheetsConnection)
+    # SMART CACHE: Remembers news for 60 seconds
     news_df = conn.read(worksheet="News", ttl=60) 
     
     if not news_df.empty:
@@ -71,6 +68,7 @@ try:
         exp_str = str(news_df.iloc[0]["Expiration"]).strip()
         
         if msg and msg.lower() != "nan" and exp_str and exp_str.lower() != "nan":
+            from datetime import datetime, timedelta
             exp_dt = pd.to_datetime(exp_str)
             ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
             
@@ -160,12 +158,8 @@ if not st.session_state.logged_in:
         st.header("📸 Some Glimpses of Our Coaching Institute")
         st.write("---")
         try:
-            from streamlit_gsheets import GSheetsConnection
-            import pandas as pd
-            import streamlit.components.v1 as components
-            
             conn = st.connection("gsheets", type=GSheetsConnection)
-            gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
+            gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=60)
             gallery_images = gallery_df["Image_URL"].dropna().tolist()
             
             if len(gallery_images) == 0:
@@ -204,6 +198,7 @@ if not st.session_state.logged_in:
                   <a class="next" onclick="plusSlides(1)">❯</a>
                 </div>
                 <script>
+                import streamlit.components.v1 as components
                 let slideIndex = 1; let timer; showSlides(slideIndex);
                 function plusSlides(n) {{ clearTimeout(timer); showSlides(slideIndex += n); }}
                 function showSlides(n) {{
@@ -356,7 +351,6 @@ if not st.session_state.logged_in:
         st.write("---")
         
         try:
-            from streamlit_gsheets import GSheetsConnection
             conn = st.connection("gsheets", type=GSheetsConnection)
             leader_df = conn.read(worksheet="Leaderboard", ttl=60) 
             
@@ -461,10 +455,8 @@ if not st.session_state.logged_in:
                         st.rerun()
                     else:
                         try:
-                            from streamlit_gsheets import GSheetsConnection
-                            import pandas as pd
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            df = conn.read(worksheet="Students", ttl=0) 
+                            df = conn.read(worksheet="Students", ttl=60) 
                             df.columns = df.columns.str.strip()
                             
                             sheet_emails = df['Email Address'].astype(str).str.strip().str.lower()
@@ -476,7 +468,6 @@ if not st.session_state.logged_in:
                                 st.session_state.user_name = str(user_match.iloc[0]["Student Name"]).strip()
                                 st.session_state.user_class = str(user_match.iloc[0]["Class"]).strip()
                                 
-                                # Fetch Board Dynamics
                                 if "Board" in df.columns:
                                     st.session_state.user_board = str(user_match.iloc[0]["Board"]).strip()
                                 else:
@@ -527,36 +518,30 @@ else:
             if "reset_key" not in st.session_state:
                 st.session_state.reset_key = 0
             
-            import pandas as pd
             try:
-                from streamlit_gsheets import GSheetsConnection
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                df_mat = conn.read(worksheet="Materials", ttl=0) 
+                df_mat = conn.read(worksheet="Materials", ttl=60) 
             except Exception:
                 df_mat = pd.DataFrame(columns=["Class", "Board", "Subject", "Chapter", "Link"])
 
-            # Class Dropdown
             default_classes = ["XII", "XI", "X", "IX", "VIII"]
             db_classes = df_mat["Class"].dropna().unique().tolist() if not df_mat.empty else []
             admin_class_options = sorted(list(set(default_classes + db_classes))) + ["+ Add New Class"]
             selected_class = st.selectbox("1. Target Class", admin_class_options, key=f"c_drop_{st.session_state.reset_key}")
             final_class = st.text_input("Enter New Class", key=f"c_t_{st.session_state.reset_key}").strip() if selected_class == "+ Add New Class" else selected_class
             
-            # Board Dropdown
             default_boards = ["CBSE", "ICSE/ISC", "WB", "ALL"]
             db_boards = df_mat["Board"].dropna().unique().tolist() if "Board" in df_mat.columns else []
             admin_board_options = sorted(list(set(default_boards + db_boards))) + ["+ Add New Board"]
             selected_board = st.selectbox("2. Target Board", admin_board_options, key=f"b_drop_{st.session_state.reset_key}")
             final_board = st.text_input("Enter New Board", key=f"b_t_{st.session_state.reset_key}").strip() if selected_board == "+ Add New Board" else selected_board
 
-            # Subject Dropdown
             default_subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Science", "English"]
             db_subjects = df_mat["Subject"].dropna().unique().tolist() if "Subject" in df_mat.columns else []
             admin_subject_options = sorted(list(set(default_subjects + db_subjects))) + ["+ Add New Subject"]
             selected_subject = st.selectbox("3. Subject Name", admin_subject_options, key=f"s_drop_{st.session_state.reset_key}")
             final_subject = st.text_input("Enter New Subject", key=f"s_t_{st.session_state.reset_key}").strip() if selected_subject == "+ Add New Subject" else selected_subject
             
-            # Chapter & Link
             final_chapter = st.text_input("4. Chapter / Topic Name", key=f"ch_t_{st.session_state.reset_key}").strip() 
             raw_link = st.text_input("5. Google Drive Share Link", key=f"l_{st.session_state.reset_key}").strip()
             final_link = raw_link.replace("/view", "/preview").replace("/edit", "/preview") if raw_link else "Pending"
@@ -576,6 +561,8 @@ else:
                             new_data = pd.DataFrame([{"Class": final_class, "Board": final_board, "Subject": final_subject, "Chapter": final_chapter, "Link": final_link}])
                             updated_df = pd.concat([df_mat, new_data], ignore_index=True)
                             conn.update(worksheet="Materials", data=updated_df)
+                            
+                        st.cache_data.clear() # CACHE CLEAR FOR FRESH DATA
                         st.session_state.publish_msg = f"✅ Published {final_chapter} for {final_board} ({final_class})!"
                         st.session_state.reset_key += 1 
                         st.rerun()
@@ -592,8 +579,7 @@ else:
             if st.button("Publish to Gallery", type="primary") and uploaded_photos:
                 with st.spinner(f"Processing and Uploading {len(uploaded_photos)} photo(s)..."):
                     try:
-                        import requests, base64, io
-                        from PIL import Image
+                        import io
                         new_urls = []
                         for photo in uploaded_photos:
                             if compress_image:
@@ -612,9 +598,10 @@ else:
                         
                         if new_urls:
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=0)
+                            gallery_df = conn.read(worksheet="Gallery", usecols=[0], ttl=60)
                             updated_df = pd.concat([gallery_df, pd.DataFrame(new_urls)], ignore_index=True)
                             conn.update(worksheet="Gallery", data=updated_df)
+                            st.cache_data.clear()
                             st.success(f"✅ Successfully published {len(new_urls)} photo(s)!")
                         else:
                             st.error("Upload failed.")
@@ -624,10 +611,9 @@ else:
         with admin_tab3:
             st.subheader("👥 Active Student Directory")
             try:
-                from streamlit_gsheets import GSheetsConnection
                 import urllib.parse
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                reg_df = conn.read(worksheet="Students", ttl=0)
+                reg_df = conn.read(worksheet="Students", ttl=60)
                 reg_df.columns = reg_df.columns.str.strip()
                 
                 required_cols = ["Student Name", "WhatsApp Number", "Password"]
@@ -637,7 +623,6 @@ else:
                     for index, row in display_df.iterrows():
                         student_name = str(row["Student Name"]).strip()
                         student_pass = str(row["Password"]).replace(".0", "").strip()
-                        
                         raw_number = str(row["WhatsApp Number"]).strip()
                         if raw_number.endswith(".0"): raw_number = raw_number[:-2]
                         clean_number = ''.join(filter(str.isdigit, raw_number))
@@ -670,7 +655,6 @@ else:
                 if st.button("📢 Publish News Banner", type="primary"):
                     if news_input:
                         try:
-                            import pandas as pd
                             from datetime import datetime, timedelta
                             num = int(duration.split()[0])
                             if "Hour" in duration: time_delta = timedelta(hours=num)
@@ -682,6 +666,7 @@ else:
                             
                             new_news = pd.DataFrame([{"Message": news_input, "Expiration": exp_dt.strftime("%Y-%m-%d %H:%M:%S")}])
                             conn.update(worksheet="News", data=new_news)
+                            st.cache_data.clear()
                             st.success(f"✅ News published! It will automatically disappear in {duration}.")
                         except Exception as e:
                             st.error(f"Database Error: {e}")
@@ -690,9 +675,9 @@ else:
             with col2:
                 if st.button("🗑️ Clear Active News"):
                     try:
-                        import pandas as pd
                         empty_news = pd.DataFrame([{"Message": "", "Expiration": ""}])
                         conn.update(worksheet="News", data=empty_news)
+                        st.cache_data.clear()
                         st.success("✅ News banner removed immediately!")
                     except Exception as e:
                         st.error(f"Database Error: {e}")
@@ -710,28 +695,16 @@ else:
                     if star_input and batch_input:
                         with st.spinner("Uploading and publishing to Leaderboard..."):
                             try:
-                                import pandas as pd
-                                import requests, base64
-                                from streamlit_gsheets import GSheetsConnection
                                 conn = st.connection("gsheets", type=GSheetsConnection)
-                                
                                 img_url = ""
                                 if star_photo:
-                                    payload = {
-                                        "key": st.secrets["IMGBB_API_KEY"],
-                                        "image": base64.b64encode(star_photo.getvalue()).decode('utf-8')
-                                    }
+                                    payload = {"key": st.secrets["IMGBB_API_KEY"], "image": base64.b64encode(star_photo.getvalue()).decode('utf-8')}
                                     res = requests.post("https://api.imgbb.com/1/upload", data=payload)
-                                    if res.status_code == 200:
-                                        img_url = res.json()["data"]["url"]
+                                    if res.status_code == 200: img_url = res.json()["data"]["url"]
                                 
-                                new_leader = pd.DataFrame([{
-                                    "Name": star_input, 
-                                    "Batch": batch_input, 
-                                    "Message": msg_input,
-                                    "Image_URL": img_url
-                                }])
+                                new_leader = pd.DataFrame([{"Name": star_input, "Batch": batch_input, "Message": msg_input, "Image_URL": img_url}])
                                 conn.update(worksheet="Leaderboard", data=new_leader)
+                                st.cache_data.clear()
                                 st.success(f"✅ {star_input} is now live on the public Leaderboard!")
                             except Exception as e:
                                 st.error(f"Database Error: {e}")
@@ -740,12 +713,10 @@ else:
             with col_b:
                 if st.button("🗑️ Hide Leaderboard"):
                     try:
-                        import pandas as pd
-                        from streamlit_gsheets import GSheetsConnection
                         conn = st.connection("gsheets", type=GSheetsConnection)
-                        
                         empty_leader = pd.DataFrame([{"Name": "", "Batch": "", "Message": "", "Image_URL": ""}])
                         conn.update(worksheet="Leaderboard", data=empty_leader)
+                        st.cache_data.clear()
                         st.success("✅ Leaderboard has been cleared and hidden from the public.")
                     except Exception as e:
                         st.error(f"Database Error: {e}")
@@ -753,16 +724,20 @@ else:
         # --- NEW: VAULT SECURED EXAM DEPLOYMENT ---
         with admin_tab6:
             st.subheader("🧠 Deploy Brain Drive Exam")
+            
+            # Print Action Messages (Survives Reruns)
+            if "exam_action_msg" in st.session_state:
+                st.success(st.session_state.exam_action_msg)
+                del st.session_state.exam_action_msg
+                
             try:
-                from streamlit_gsheets import GSheetsConnection
-                import pandas as pd
                 from datetime import datetime, timedelta
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                
                 ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                 
                 try:
-                    settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
+                    # SMART CACHE: Checks Exam Status every 30 secs to save quota
+                    settings_df = conn.read(worksheet="Exam_Settings", ttl=30)
                 except:
                     st.error("Please add 'Board' and 'Class' columns to your Exam_Settings sheet!")
                     settings_df = pd.DataFrame()
@@ -787,18 +762,18 @@ else:
                             
                             if st.button("🛑 Force Stop Exam Early"):
                                 conn.update(worksheet="Exam_Settings", data=pd.DataFrame([{"Status": "Inactive", "Board":"", "Class":"", "Subject": "", "Duration": "", "Retake": "", "Expires_At": "", "Question_Limit": ""}]))
+                                st.cache_data.clear() # CLEARS CACHE INSTANTLY
+                                st.session_state.exam_action_msg = "🛑 Exam forcefully stopped."
                                 st.rerun()
                     except:
                         pass
                 
                 st.write("---")
-                brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
                 
-                # Vault Security Check: Ensure Exam Type exists
                 if "Exam Type" not in brain_df.columns:
                     brain_df["Exam Type"] = "Practice"
                 
-                # Filter ONLY "Final" questions for the Admin Deployer
                 vault_q = brain_df[brain_df["Exam Type"].astype(str).str.strip().str.title() == "Final"]
                 
                 col_c, col_b = st.columns(2)
@@ -840,7 +815,8 @@ else:
                                 "Question_Limit": exam_limit
                             }])
                             conn.update(worksheet="Exam_Settings", data=settings)
-                            st.success(f"✅ Exam Deployed Successfully! It will vanish at {expires_at.strftime('%I:%M %p')}.")
+                            st.cache_data.clear() # CACHE WIPE ON DEPLOY
+                            st.session_state.exam_action_msg = f"✅ Exam Deployed Successfully! It will vanish at {expires_at.strftime('%I:%M %p')}."
                             st.rerun()
                     else:
                         st.warning(f"No Final Exam questions found for Class {set_cls} ({set_brd}).")
@@ -849,7 +825,7 @@ else:
                 
                 st.write("---")
                 st.subheader("📊 Live Exam Scores")
-                scores_df = conn.read(worksheet="Scores", ttl=0)
+                scores_df = conn.read(worksheet="Scores", ttl=15) # Refreshes scores every 15 secs
                 if not scores_df.empty and "Name" in scores_df.columns:
                     st.dataframe(scores_df, use_container_width=True, hide_index=True)
                 else:
@@ -866,7 +842,6 @@ else:
         
         if st.session_state.get("user_dob") and st.session_state.user_dob.lower() not in ["nan", "none", ""]:
             try:
-                import pandas as pd
                 from datetime import datetime, timedelta
                 dob_dt = pd.to_datetime(st.session_state.user_dob, dayfirst=True)
                 ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -901,18 +876,15 @@ else:
             else:
                 st.write("All study materials and tabs are locked until you submit this exam.")
                 try:
-                    from streamlit_gsheets import GSheetsConnection
-                    import pandas as pd
                     from datetime import datetime, timedelta
                     import streamlit.components.v1 as components
                     
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                    settings_df = conn.read(worksheet="Exam_Settings", ttl=30)
                     
-                    settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
                     active_sub = str(settings_df.iloc[0]["Subject"])
                     time_limit = int(settings_df.iloc[0]["Duration"])
-                    
                     end_time = st.session_state.exam_start_time + timedelta(minutes=time_limit)
                     rem_sec = int((end_time - ist_now).total_seconds())
                     
@@ -977,6 +949,7 @@ else:
                                 
                                 updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                                 conn.update(worksheet="Scores", data=updated_scores)
+                                st.cache_data.clear() # CACHE WIPE ON SUBMISSION
                                 
                                 st.session_state.exam_completed = True
                                 del st.session_state.exam_questions
@@ -997,6 +970,7 @@ else:
                                 }])
                             updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                             conn.update(worksheet="Scores", data=updated_scores)
+                            st.cache_data.clear() # CACHE WIPE ON SUBMISSION
                             
                             st.session_state.exam_completed = True
                             del st.session_state.exam_questions
@@ -1021,14 +995,10 @@ else:
                 if st.button("🔄 Retake This Subject"):
                     with st.spinner("Shuffling new questions..."):
                         try:
-                            from streamlit_gsheets import GSheetsConnection
-                            import pandas as pd
                             from datetime import datetime, timedelta
-                            
                             conn = st.connection("gsheets", type=GSheetsConnection)
-                            brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                            brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
                             
-                            # Vault Security Check
                             if "Exam Type" not in brain_df.columns:
                                 brain_df["Exam Type"] = "Practice"
                                 
@@ -1036,7 +1006,6 @@ else:
                             b_col = brain_df["Board"].astype(str).str.strip().str.upper()
                             user_b = str(st.session_state.user_board).strip().upper()
                             
-                            # MUST be labeled "Practice"
                             my_class_q = brain_df[(brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()) &
                                                   ((b_col == user_b) | (b_col == "ALL") | (b_col == "")) &
                                                   (e_col == "Practice")]
@@ -1083,8 +1052,6 @@ else:
                         percentage = round((score / total) * 100, 2)
                         
                         try:
-                            from streamlit_gsheets import GSheetsConnection
-                            import pandas as pd
                             conn = st.connection("gsheets", type=GSheetsConnection)
                             scores_df = conn.read(worksheet="Scores", ttl=0)
                             
@@ -1099,6 +1066,7 @@ else:
                             }])
                             updated_scores = pd.concat([scores_df, new_score], ignore_index=True) if not scores_df.empty else new_score
                             conn.update(worksheet="Scores", data=updated_scores)
+                            st.cache_data.clear() # CACHE WIPE ON SUBMISSION
                         except Exception as e:
                             st.error(f"Could not save score: {e}")
 
@@ -1115,9 +1083,8 @@ else:
             
             with stud_tab1:
                 try:
-                    from streamlit_gsheets import GSheetsConnection
                     conn = st.connection("gsheets", type=GSheetsConnection)
-                    m_df = conn.read(worksheet="Materials", ttl=0) 
+                    m_df = conn.read(worksheet="Materials", ttl=60) 
                     
                     if 'Chapter' not in m_df.columns: m_df['Chapter'] = "General"
                     if 'Board' not in m_df.columns: m_df['Board'] = "ALL"
@@ -1151,15 +1118,12 @@ else:
                 st.subheader("🧠 Brain Drive")
                 
                 try:
-                    from streamlit_gsheets import GSheetsConnection
-                    import pandas as pd
                     from datetime import datetime, timedelta
-                    
                     conn = st.connection("gsheets", type=GSheetsConnection)
                     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     
                     # 1. CHECK FOR ASSIGNED FINAL EXAMS
-                    settings_df = conn.read(worksheet="Exam_Settings", ttl=0)
+                    settings_df = conn.read(worksheet="Exam_Settings", ttl=30)
                     exam_available = False
                     
                     if not settings_df.empty and str(settings_df.iloc[0].get("Status", "")) == "Active":
@@ -1182,7 +1146,7 @@ else:
                                 pass
 
                     if exam_available:
-                        scores_df = conn.read(worksheet="Scores", ttl=0)
+                        scores_df = conn.read(worksheet="Scores", ttl=30)
                         already_taken = False
                         if not scores_df.empty and "Name" in scores_df.columns:
                             mask = (scores_df["Name"] == st.session_state.user_name) & (scores_df["Subject"] == active_sub)
@@ -1201,9 +1165,8 @@ else:
                             st.write("When you are ready, click Start. The timer will begin immediately and you will enter Focus Mode.")
                             
                             if st.button("🚀 Start Final Exam", type="primary"):
-                                brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                                brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
                                 
-                                # VAULT SECURITY CHECK: ONLY "FINAL" QUESTIONS
                                 if "Exam Type" not in brain_df.columns:
                                     brain_df["Exam Type"] = "Practice"
                                 e_col = brain_df["Exam Type"].astype(str).str.strip().str.title()
@@ -1224,9 +1187,8 @@ else:
                         st.write("No active final exams. Take a self-assessment practice quiz to test your readiness!")
                         st.write("---")
                         
-                        brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                        brain_df = conn.read(worksheet="Brain_Drive", ttl=60)
                         if "Class" in brain_df.columns and "Board" in brain_df.columns:
-                            # Vault Security Check
                             if "Exam Type" not in brain_df.columns:
                                 brain_df["Exam Type"] = "Practice"
                             
@@ -1234,7 +1196,6 @@ else:
                             b_col = brain_df["Board"].astype(str).str.strip().str.upper()
                             user_b = str(st.session_state.user_board).strip().upper()
                             
-                            # ONLY "PRACTICE" QUESTIONS
                             my_class_q = brain_df[(brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()) &
                                                   ((b_col == user_b) | (b_col == "ALL") | (b_col == "")) &
                                                   (e_col == "Practice")]
@@ -1261,7 +1222,7 @@ else:
                         st.write("---")
                         st.subheader("📊 My Past Scores")
                         try:
-                            scores_df = conn.read(worksheet="Scores", ttl=0)
+                            scores_df = conn.read(worksheet="Scores", ttl=30)
                             if not scores_df.empty and "Name" in scores_df.columns:
                                 my_scores = scores_df[scores_df["Name"] == st.session_state.user_name]
                                 if not my_scores.empty:
