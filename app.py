@@ -1012,14 +1012,34 @@ else:
                 if score >= (total * 0.8):
                     st.balloons()
                     
-                if st.button("🔄 Take Another Practice Quiz"):
-                    # Safely exit back to the lobby to fetch new questions
-                    st.session_state.practice_active = False
-                    st.session_state.practice_completed = False
-                    if 'practice_questions' in st.session_state:
-                        del st.session_state.practice_questions
-                    st.rerun()
-                    
+                # --- UPGRADED RETAKE BUTTON (STAYS IN FOCUS MODE) ---
+                if st.button("🔄 Retake This Subject"):
+                    with st.spinner("Shuffling new questions..."):
+                        try:
+                            from streamlit_gsheets import GSheetsConnection
+                            import pandas as pd
+                            from datetime import datetime, timedelta
+                            
+                            conn = st.connection("gsheets", type=GSheetsConnection)
+                            brain_df = conn.read(worksheet="Brain_Drive", ttl=0)
+                            
+                            b_col = brain_df["Board"].astype(str).str.strip().str.upper()
+                            user_b = str(st.session_state.user_board).strip().upper()
+                            
+                            my_class_q = brain_df[(brain_df["Class"].astype(str).str.strip() == str(st.session_state.user_class).strip()) &
+                                                  ((b_col == user_b) | (b_col == "ALL") | (b_col == ""))]
+                                                  
+                            sub_pool = my_class_q[my_class_q["Subject"] == st.session_state.practice_sub]
+                            sample_size = min(10, len(sub_pool))
+                            
+                            # Give them 10 brand new random questions
+                            st.session_state.practice_questions = sub_pool.sample(n=sample_size).to_dict('records')
+                            st.session_state.practice_completed = False
+                            st.session_state.practice_start_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Error loading new questions. Please exit and try again.")
+                            
                 if st.button("🚪 Exit Practice Mode"):
                     st.session_state.practice_active = False
                     st.session_state.practice_completed = False
@@ -1076,7 +1096,6 @@ else:
                         st.session_state.practice_total = total
                         st.session_state.practice_completed = True
                         st.rerun()
-
         # ==========================================
         #       NORMAL STUDENT DASHBOARD (TABS)
         # ==========================================
