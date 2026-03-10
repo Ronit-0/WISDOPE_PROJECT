@@ -885,7 +885,6 @@ else:
                     rem_sec = int((end_time - ist_now).total_seconds())
                     display_sec = max(0, rem_sec)
                     
-                    # 1. ALWAYS SHOW TIMER
                     timer_html = f"""
                     <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; background-color: #ff4b4b; text-align: center; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 15px;">
                         ⏳ <span id="timer">{display_sec // 60:02d}:{display_sec % 60:02d}</span>
@@ -918,7 +917,6 @@ else:
                     if rem_sec <= 0:
                         st.error("🚨 TIME IS UP! Please click 'Submit Exam' below immediately. Your current answers have been saved.")
 
-                    # 2. ALWAYS SHOW FORM (Prevents vanishing answers)
                     with st.form("exam_form"):
                         user_answers = {}
                         for i, q in enumerate(st.session_state.exam_questions):
@@ -931,7 +929,6 @@ else:
                         submitted = st.form_submit_button("Submit Exam", type="primary")
                         
                         if submitted:
-                            # 3. ESCAPE HATCH: Instantly lock out of infinite loops
                             st.session_state.exam_completed = True
                             
                             ist_submit = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -1153,10 +1150,6 @@ else:
 
                         if already_taken and not allow_retake:
                             st.warning("You have already completed this exam. Retakes are currently disabled by Rishav Sir.")
-                            # QUICK CACHE CLEAR BUTTON
-                            if st.button("🔄 Refresh Database (If you just deleted your old score)"):
-                                st.cache_data.clear()
-                                st.rerun()
                         else:
                             st.markdown(f"""
                             <div style="background-color: rgba(255, 0, 0, 0.1); border-left: 5px solid red; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
@@ -1237,6 +1230,21 @@ else:
                                 my_scores = scores_df[scores_df["Name"] == st.session_state.user_name]
                                 if not my_scores.empty:
                                     display_scores = my_scores[["Subject", "Start Time", "Score", "Percentage"]].copy()
+                                    
+                                    # Fix Google Sheets turning percentages into pure numbers (e.g., 1 instead of 100%)
+                                    def format_pct(val):
+                                        v_str = str(val).strip()
+                                        try:
+                                            v_num = float(v_str)
+                                            if 0.0 <= v_num <= 1.0:
+                                                return f"{int(v_num * 100)}%"
+                                            else:
+                                                return f"{v_str}%"
+                                        except:
+                                            return v_str
+                                            
+                                    display_scores["Percentage"] = display_scores["Percentage"].apply(format_pct)
+                                    
                                     st.dataframe(display_scores, hide_index=True, use_container_width=True)
                                 else:
                                     st.info("You haven't taken any exams or practice tests yet.")
