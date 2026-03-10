@@ -81,24 +81,45 @@ except Exception:
     pass 
 
 # ==========================================
-#       PERSISTENT SESSION MANAGER
+#       SECURE PERSISTENT SESSION MANAGER
 # ==========================================
+import time
+import json
+import base64
+import hmac
+import hashlib
+
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+
+# We use your hidden admin password as a cryptographic key. 
+# Hackers can't forge a token because they don't know this key!
+SECRET_KEY = st.secrets["admin"]["password"].encode('utf-8')
 
 if not st.session_state.logged_in and "session_token" in st.query_params:
     try:
         token = st.query_params["session_token"]
-        decoded_bytes = base64.b64decode(token.encode('utf-8'))
-        session_data = json.loads(decoded_bytes.decode('utf-8'))
+        # Split the token into the data and the security signature
+        encoded_payload, received_signature = token.split(".")
+        payload_bytes = base64.b64decode(encoded_payload)
         
-        if time.time() < session_data["expiry"]:
-            st.session_state.logged_in = True
-            st.session_state.user_name = session_data["name"]
-            st.session_state.user_class = session_data["class"]
-            st.session_state.user_board = session_data.get("board", "")
-            st.session_state.user_dob = session_data.get("dob", "")
+        # Recalculate what the signature SHOULD be
+        expected_signature = hmac.new(SECRET_KEY, payload_bytes, hashlib.sha256).hexdigest()
+        
+        # If the signatures match, it's authentic! If not, a hacker forged it.
+        if hmac.compare_digest(expected_signature, received_signature):
+            session_data = json.loads(payload_bytes.decode('utf-8'))
+            
+            if time.time() < session_data["expiry"]:
+                st.session_state.logged_in = True
+                st.session_state.user_name = session_data["name"]
+                st.session_state.user_class = session_data["class"]
+                st.session_state.user_board = session_data.get("board", "")
+                st.session_state.user_dob = session_data.get("dob", "")
+            else:
+                del st.query_params["session_token"]
         else:
+            # Hacker detected! Kicking them out.
             del st.query_params["session_token"]
     except:
         del st.query_params["session_token"]
@@ -112,9 +133,15 @@ if st.session_state.logged_in:
         "dob": st.session_state.get("user_dob", ""),
         "expiry": expiry_time
     }
-    token_bytes = json.dumps(session_data).encode('utf-8')
-    st.query_params["session_token"] = base64.b64encode(token_bytes).decode('utf-8')
-
+    
+    payload_bytes = json.dumps(session_data).encode('utf-8')
+    encoded_payload = base64.b64encode(payload_bytes).decode('utf-8')
+    
+    # Generate the cryptographic signature for the URL
+    signature = hmac.new(SECRET_KEY, payload_bytes, hashlib.sha256).hexdigest()
+    
+    # Combine the data and the signature with a dot
+    st.query_params["session_token"] = f"{encoded_payload}.{signature}"
 # ==========================================
 #               PUBLIC WEBSITE
 # ==========================================
