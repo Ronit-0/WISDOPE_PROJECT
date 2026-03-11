@@ -1387,12 +1387,12 @@ else:
             welcome_msg = "Welcome to the Command Center, Rishav Sir! Ask me about managing materials, exams, or fixing bugs."
         else:
             first_name = st.session_state.user_name.split()[0]
-            welcome_msg = f"Welcome back to your portal, {first_name}! 🎓 Ask me about your exams, study materials, or technical help!"
+            welcome_msg = f"Welcome back to your portal, {first_name}! 🎓 Ask me about your exams, study materials, or ask me academic questions!"
     else:
         first_name = "Guest"
-        welcome_msg = "Hello! I am the Wisdope AI Assistant. Ask me anything about admissions, fees, or our faculty!"
+        welcome_msg = "Hello! I am the Wisdope AI Assistant. Ask me anything about admissions, fees, or even science topics!"
 
-    # NOTE: Replace YOUR_PHONE_NUMBER_HERE with your actual phone number
+    # NOTE: Replace YOUR_PHONE_NUMBER_HERE on line 1251 with your actual phone number
     custom_chat_code = f"""
     <script>
     (function() {{
@@ -1464,23 +1464,21 @@ else:
         const userName = "{first_name}";
         const groqKey = "{GROQ_API_KEY}";
 
-        // GLOBAL MEMORY
         window.parent.wisdopeChatHistory = window.parent.wisdopeChatHistory || [];
         
-        const systemPrompt = `You are the Wisdope AI Assistant, a helpful and highly energetic virtual guide for Wisdope Academy. 
-        RULES: Keep answers very short and concise (1-2 sentences maximum). Use emojis to be friendly. 
+        // UPGRADED AI PROMPT: Tells it to ACTUALLY answer science questions!
+        const systemPrompt = `You are the Wisdope AI Assistant, a highly intelligent and energetic academic tutor for Wisdope Academy. 
+        CRITICAL RULES: 
+        1. Keep answers concise (2-3 sentences). Use emojis to be friendly. 
+        2. If a student asks a general academic question (Physics, Chemistry, Biology, Math, study tips, etc.), ANSWER IT directly and accurately using your AI knowledge base! Be a great teacher.
+        3. ONLY tell them to contact Rishav Sir if they ask about specific offline batch schedules, offline fees, or personal administrative details not listed below.
         FACTS TO KNOW: 
         - Founder: Rishav Karar Sir (MSc. Biotech, R.A. Pharmacognosy). 
-        - Location: 37, Dinu Lane, Kadamtala, Howrah-01 (Opposite Kadamtala Bus Stand near S.B. Jewellers). 
+        - Location: 37, Dinu Lane, Kadamtala, Howrah-01. 
         - Contact: Call 9051965176 or WhatsApp 7044443309. 
         - Subjects Taught: Physics, Chemistry, Biology (Theory and Practical labs). 
-        - Boards: ICSE, ISC, CBSE, WB. 
-        - Classes: VIII to XII. 
-        - NEET prep is available. 
-        - Timings: Morning (7AM-10AM) and Evening (5PM-10PM). 
-        - Fees: Depend on the batch, users must contact Rishav Sir. 
-        - Tech Architect: The website was built by Ronit Das.
-        If a user asks about something you do not know, tell them to contact Rishav Sir directly on WhatsApp.`;
+        - Boards: ICSE, ISC, CBSE, WB (Classes VIII to XII). NEET prep is available.
+        - Tech Architect: Website built by Ronit Das.`;
 
         const chatHTML = `
             <div id="chat-tooltip">Need help? 👋</div>
@@ -1607,6 +1605,7 @@ else:
             }}
             else if (tLower.includes('error') || tLower.includes('bug') || tLower.includes('crash') || tLower.includes('not working') || tLower.includes('glitch')) {{
                 const bugText = encodeURIComponent(`Hi Ronit, I found a bug on the website. Here is what happened: `);
+                // NOTE: Change YOUR_PHONE_NUMBER_HERE below!
                 let reply = `Uh oh, a technical glitch! 🛠️ Please take a screenshot and send it to our Digital Architect, Ronit Das.<br>
                 <a href="https://wa.me/YOUR_PHONE_NUMBER_HERE?text=${{bugText}}" target="_blank" class="bot-action-btn" style="background: linear-gradient(135deg, #FF416C, #FF4B2B);">🛠️ Report Bug to Ronit</a>`;
                 setTimeout(() => injectBotMessage(reply), 800);
@@ -1665,7 +1664,15 @@ else:
                 if (data.choices && data.choices.length > 0) {{
                     let aiText = data.choices[0].message.content;
                     window.parent.wisdopeChatHistory.push({{ "role": "assistant", "content": aiText }});
+                    
                     let formattedReply = aiText.replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>').replace(/\\n/g, '<br>');
+                    
+                    // NEW SMART BUTTON INJECTOR: If AI ever mentions Rishav Sir's contact info, automatically turn it into a button!
+                    if (formattedReply.includes('7044443309') || formattedReply.includes('9051965176') || formattedReply.toLowerCase().includes('contact rishav')) {{
+                        const safeQueryText = encodeURIComponent(`Hi Rishav Sir, I was asking the AI on the website about: "${{text}}" and it told me to contact you.`);
+                        formattedReply += `<br><br><a href="https://wa.me/917044443309?text=${{safeQueryText}}" target="_blank" class="bot-action-btn">📲 Chat with Rishav Sir</a>`;
+                    }}
+
                     injectBotMessage(formattedReply);
                 }} else {{
                     injectBotMessage("Sorry, I received an empty response from the server.");
