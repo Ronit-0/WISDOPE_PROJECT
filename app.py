@@ -1350,281 +1350,291 @@ st.markdown(
 # ==========================================
 import streamlit.components.v1 as components
 
-user_type = st.session_state.get("user_class", "PUBLIC")
-if st.session_state.get("logged_in", False):
-    if user_type == "ADMIN":
-        first_name = "Rishav Sir"
-        welcome_msg = "Welcome to the Command Center, Rishav Sir! Ask me about managing materials, exams, or fixing bugs."
-    else:
-        first_name = st.session_state.user_name.split()[0]
-        welcome_msg = f"Welcome back to your portal, {first_name}! 🎓 Ask me about your exams, study materials, or technical help!"
+# --- ANTI-CHEAT PROTOCOL ---
+in_focus_mode = st.session_state.get("exam_active", False)
+in_practice_mode = st.session_state.get("practice_active", False)
+
+if in_focus_mode or in_practice_mode:
+    # If student is in an exam, DESTROY the chatbot to prevent cheating!
+    destroy_code = """
+    <script>
+    var existingContainer = window.parent.document.getElementById('wisdope-chatbot-container');
+    if(existingContainer) existingContainer.remove();
+    var existingStyle = window.parent.document.getElementById('wisdope-chatbot-style');
+    if(existingStyle) existingStyle.remove();
+    </script>
+    """
+    components.html(destroy_code, height=0, width=0)
+
 else:
-    first_name = "Guest"
-    welcome_msg = "Hello! I am the Wisdope AI Assistant. Ask me anything about admissions, fees, or our faculty!"
+    # --- NORMAL BOT INJECTION ---
+    user_type = st.session_state.get("user_class", "PUBLIC")
+    if st.session_state.get("logged_in", False):
+        if user_type == "ADMIN":
+            first_name = "Rishav Sir"
+            welcome_msg = "Welcome to the Command Center, Rishav Sir! Ask me about managing materials, exams, or fixing bugs."
+        else:
+            first_name = st.session_state.user_name.split()[0]
+            welcome_msg = f"Welcome back to your portal, {first_name}! 🎓 Ask me about your exams, study materials, or technical help!"
+    else:
+        first_name = "Guest"
+        welcome_msg = "Hello! I am the Wisdope AI Assistant. Ask me anything about admissions, fees, or our faculty!"
 
-# NOTE: Replace 'YOUR_PHONE_NUMBER_HERE' on line 1251 with your actual phone number so students can send you bugs!
-custom_chat_code = f"""
-<script>
-(function() {{
-    const currentUser = "{first_name}";
-    const existingContainer = window.parent.document.getElementById('wisdope-chatbot-container');
-    const existingStyle = window.parent.document.getElementById('wisdope-chatbot-style');
-    
-    // IDENTITY CHECK: Destroy old bot if the user logs in or out
-    if (existingContainer) {{
-        if (existingContainer.getAttribute('data-user') === currentUser) {{
-            return; // User is the same, keep the current chat history!
-        }} else {{
-            existingContainer.remove();
-            if (existingStyle) existingStyle.remove();
-        }}
-    }}
-
-    const style = window.parent.document.createElement('style');
-    style.id = 'wisdope-chatbot-style';
-    style.innerHTML = `
-        #wisdope-chatbot-container {{ position: fixed; bottom: 25px; right: 25px; z-index: 999999; font-family: 'Segoe UI', Tahoma, sans-serif; }}
-        #chat-fab {{ width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(135deg, #8A2BE2, #4B0082); box-shadow: 0 4px 20px rgba(138, 43, 226, 0.6), 0 0 0 2px rgba(0, 229, 255, 0.8); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease; float: right; position: relative; }}
-        #chat-fab:hover {{ transform: scale(1.1) rotate(-5deg); box-shadow: 0 6px 25px rgba(0, 229, 255, 0.8), 0 0 0 2px rgba(138, 43, 226, 1); }}
-        #chat-fab svg {{ width: 32px; height: 32px; fill: white; transition: transform 0.3s ease; }}
+    # NOTE: Replace 'YOUR_PHONE_NUMBER_HERE' on line 1258 with your actual phone number so students can send you bugs!
+    custom_chat_code = f"""
+    <script>
+    (function() {{
+        const currentUser = "{first_name}";
+        const existingContainer = window.parent.document.getElementById('wisdope-chatbot-container');
+        const existingStyle = window.parent.document.getElementById('wisdope-chatbot-style');
         
-        /* The Animated Need Help Tooltip */
-        #chat-tooltip {{
-            position: absolute; right: 80px; bottom: 15px; background: linear-gradient(135deg, #FF416C, #FF4B2B);
-            color: white; padding: 8px 14px; border-radius: 20px; border-bottom-right-radius: 0px;
-            font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(255, 65, 108, 0.4);
-            opacity: 0; transform: translateX(20px) scale(0.9); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            pointer-events: none; white-space: nowrap;
+        if (existingContainer) {{
+            if (existingContainer.getAttribute('data-user') === currentUser) {{
+                return; 
+            }} else {{
+                existingContainer.remove();
+                if (existingStyle) existingStyle.remove();
+            }}
         }}
-        #chat-tooltip.show {{ opacity: 1; transform: translateX(0) scale(1); }}
 
-        #chat-window {{ display: none; width: 360px; max-width: 90vw; height: 520px; max-height: 80vh; background: linear-gradient(180deg, #13111C 0%, #1a1625 100%); border: 1px solid rgba(138, 43, 226, 0.5); border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(138, 43, 226, 0.2); margin-bottom: 20px; flex-direction: column; overflow: hidden; transform-origin: bottom right; transform: scale(0.1); opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }}
-        #chat-window.open {{ display: flex; transform: scale(1); opacity: 1; }}
-        #chat-header {{ background: linear-gradient(90deg, #1C1829, #2a2438); padding: 16px 20px; color: #F8F9FA; font-weight: 800; font-size: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #8A2BE2; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; }}
-        .header-title {{ display: flex; align-items: center; gap: 10px; }}
-        .online-dot {{ width: 10px; height: 10px; background-color: #00FF00; border-radius: 50%; box-shadow: 0 0 8px #00FF00; animation: pulse 2s infinite; }}
-        @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); }} 70% {{ box-shadow: 0 0 0 6px rgba(0, 255, 0, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }} }}
-        #chat-close {{ cursor: pointer; color: #B0A8B9; font-size: 20px; transition: color 0.2s, transform 0.2s; }}
-        #chat-close:hover {{ color: #ff4b4b; transform: scale(1.2); }}
-        #chat-messages {{ flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }}
-        #chat-messages::-webkit-scrollbar {{ width: 6px; }}
-        #chat-messages::-webkit-scrollbar-thumb {{ background: rgba(138, 43, 226, 0.5); border-radius: 3px; }}
-        .msg-row {{ display: flex; align-items: flex-end; gap: 8px; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; transform: translateY(10px); max-width: 100%; }}
-        .bot-row {{ justify-content: flex-start; }}
-        .user-row {{ justify-content: flex-end; }}
-        .avatar {{ width: 30px; height: 30px; background: #1C1829; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid #00E5FF; flex-shrink: 0; box-shadow: 0 0 8px rgba(0,229,255,0.3); }}
-        .avatar svg {{ width: 16px; height: 16px; fill: #00E5FF; }}
-        .msg-content {{ display: flex; flex-direction: column; max-width: 80%; }}
-        .msg-bubble {{ padding: 12px 16px; font-size: 14px; line-height: 1.4; word-wrap: break-word; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }}
-        .bot-msg {{ background: #2a2438; color: #E0E0E0; border-radius: 16px 16px 16px 4px; border: 1px solid rgba(138, 43, 226, 0.3); }}
-        .user-msg {{ background: linear-gradient(135deg, #8A2BE2, #5a189a); color: white; border-radius: 16px 16px 4px 16px; border: 1px solid rgba(0, 229, 255, 0.3); }}
-        .msg-time {{ font-size: 10px; color: #787088; margin-top: 4px; padding: 0 4px; }}
-        .user-time {{ text-align: right; }}
-        .bot-time {{ text-align: left; }}
-        .bot-action-btn {{ display: inline-block; margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #25D366, #128C7E); color: white !important; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; text-align: center; }}
-        .bot-action-btn:hover {{ transform: scale(1.05); }}
-        .typing-bubble {{ display: flex; align-items: center; gap: 5px; padding: 14px 16px; min-height: 20px; }}
-        .dot {{ width: 7px; height: 7px; background-color: #00E5FF; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }}
-        .dot:nth-child(1) {{ animation-delay: -0.32s; }}
-        .dot:nth-child(2) {{ animation-delay: -0.16s; }}
-        @keyframes bounce {{ 0%, 80%, 100% {{ transform: scale(0); opacity: 0.5; }} 40% {{ transform: scale(1); opacity: 1; }} }}
-        @keyframes popIn {{ to {{ opacity: 1; transform: translateY(0); }} }}
-        #chat-input-area {{ display: flex; padding: 15px; background: #1C1829; border-top: 1px solid rgba(138, 43, 226, 0.3); align-items: center; gap: 10px; }}
-        #chat-input {{ flex: 1; background: #13111C; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 18px; border-radius: 25px; outline: none; font-size: 14px; transition: all 0.3s; }}
-        #chat-input:focus {{ border-color: #00E5FF; box-shadow: 0 0 10px rgba(0, 229, 255, 0.2); }}
-        #chat-input:disabled {{ opacity: 0.5; cursor: not-allowed; }}
-        #send-btn {{ background: #8A2BE2; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s, background 0.2s; }}
-        #send-btn:hover:not(:disabled) {{ transform: scale(1.1) rotate(15deg); background: #00E5FF; }}
-        #send-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
-        #send-btn svg {{ fill: white; width: 18px; height: 18px; }}
-    `;
-    window.parent.document.head.appendChild(style);
+        const style = window.parent.document.createElement('style');
+        style.id = 'wisdope-chatbot-style';
+        style.innerHTML = `
+            /* MOVED HIGHER TO AVOID STREAMLIT LOGO */
+            #wisdope-chatbot-container {{ position: fixed; bottom: 90px; right: 25px; z-index: 999999; font-family: 'Segoe UI', Tahoma, sans-serif; }}
+            #chat-fab {{ width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(135deg, #8A2BE2, #4B0082); box-shadow: 0 4px 20px rgba(138, 43, 226, 0.6), 0 0 0 2px rgba(0, 229, 255, 0.8); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease; float: right; position: relative; }}
+            #chat-fab:hover {{ transform: scale(1.1) rotate(-5deg); box-shadow: 0 6px 25px rgba(0, 229, 255, 0.8), 0 0 0 2px rgba(138, 43, 226, 1); }}
+            #chat-fab svg {{ width: 32px; height: 32px; fill: white; transition: transform 0.3s ease; }}
+            
+            #chat-tooltip {{
+                position: absolute; right: 80px; bottom: 15px; background: linear-gradient(135deg, #FF416C, #FF4B2B);
+                color: white; padding: 8px 14px; border-radius: 20px; border-bottom-right-radius: 0px;
+                font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(255, 65, 108, 0.4);
+                opacity: 0; transform: translateX(20px) scale(0.9); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                pointer-events: none; white-space: nowrap;
+            }}
+            #chat-tooltip.show {{ opacity: 1; transform: translateX(0) scale(1); }}
 
-    const getTime = () => new Date().toLocaleTimeString([], {{ hour: '2-digit', minute: '2-digit' }});
-    const botIcon = `<svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1H1a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73A2 2 0 1 1 12 2zm-3 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>`;
-    const userType = "{user_type}";
-    const userName = "{first_name}";
+            #chat-window {{ display: none; width: 360px; max-width: 90vw; height: 520px; max-height: 80vh; background: linear-gradient(180deg, #13111C 0%, #1a1625 100%); border: 1px solid rgba(138, 43, 226, 0.5); border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(138, 43, 226, 0.2); margin-bottom: 20px; flex-direction: column; overflow: hidden; transform-origin: bottom right; transform: scale(0.1); opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }}
+            #chat-window.open {{ display: flex; transform: scale(1); opacity: 1; }}
+            #chat-header {{ background: linear-gradient(90deg, #1C1829, #2a2438); padding: 16px 20px; color: #F8F9FA; font-weight: 800; font-size: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #8A2BE2; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; }}
+            .header-title {{ display: flex; align-items: center; gap: 10px; }}
+            .online-dot {{ width: 10px; height: 10px; background-color: #00FF00; border-radius: 50%; box-shadow: 0 0 8px #00FF00; animation: pulse 2s infinite; }}
+            @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); }} 70% {{ box-shadow: 0 0 0 6px rgba(0, 255, 0, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }} }}
+            #chat-close {{ cursor: pointer; color: #B0A8B9; font-size: 20px; transition: color 0.2s, transform 0.2s; }}
+            #chat-close:hover {{ color: #ff4b4b; transform: scale(1.2); }}
+            #chat-messages {{ flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }}
+            #chat-messages::-webkit-scrollbar {{ width: 6px; }}
+            #chat-messages::-webkit-scrollbar-thumb {{ background: rgba(138, 43, 226, 0.5); border-radius: 3px; }}
+            .msg-row {{ display: flex; align-items: flex-end; gap: 8px; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; transform: translateY(10px); max-width: 100%; }}
+            .bot-row {{ justify-content: flex-start; }}
+            .user-row {{ justify-content: flex-end; }}
+            .avatar {{ width: 30px; height: 30px; background: #1C1829; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid #00E5FF; flex-shrink: 0; box-shadow: 0 0 8px rgba(0,229,255,0.3); }}
+            .avatar svg {{ width: 16px; height: 16px; fill: #00E5FF; }}
+            .msg-content {{ display: flex; flex-direction: column; max-width: 80%; }}
+            .msg-bubble {{ padding: 12px 16px; font-size: 14px; line-height: 1.4; word-wrap: break-word; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }}
+            .bot-msg {{ background: #2a2438; color: #E0E0E0; border-radius: 16px 16px 16px 4px; border: 1px solid rgba(138, 43, 226, 0.3); }}
+            .user-msg {{ background: linear-gradient(135deg, #8A2BE2, #5a189a); color: white; border-radius: 16px 16px 4px 16px; border: 1px solid rgba(0, 229, 255, 0.3); }}
+            .msg-time {{ font-size: 10px; color: #787088; margin-top: 4px; padding: 0 4px; }}
+            .user-time {{ text-align: right; }}
+            .bot-time {{ text-align: left; }}
+            .bot-action-btn {{ display: inline-block; margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #25D366, #128C7E); color: white !important; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.2s; text-align: center; }}
+            .bot-action-btn:hover {{ transform: scale(1.05); }}
+            .typing-bubble {{ display: flex; align-items: center; gap: 5px; padding: 14px 16px; min-height: 20px; }}
+            .dot {{ width: 7px; height: 7px; background-color: #00E5FF; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }}
+            .dot:nth-child(1) {{ animation-delay: -0.32s; }}
+            .dot:nth-child(2) {{ animation-delay: -0.16s; }}
+            @keyframes bounce {{ 0%, 80%, 100% {{ transform: scale(0); opacity: 0.5; }} 40% {{ transform: scale(1); opacity: 1; }} }}
+            @keyframes popIn {{ to {{ opacity: 1; transform: translateY(0); }} }}
+            #chat-input-area {{ display: flex; padding: 15px; background: #1C1829; border-top: 1px solid rgba(138, 43, 226, 0.3); align-items: center; gap: 10px; }}
+            #chat-input {{ flex: 1; background: #13111C; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 18px; border-radius: 25px; outline: none; font-size: 14px; transition: all 0.3s; }}
+            #chat-input:focus {{ border-color: #00E5FF; box-shadow: 0 0 10px rgba(0, 229, 255, 0.2); }}
+            #chat-input:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+            #send-btn {{ background: #8A2BE2; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s, background 0.2s; }}
+            #send-btn:hover:not(:disabled) {{ transform: scale(1.1) rotate(15deg); background: #00E5FF; }}
+            #send-btn:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+            #send-btn svg {{ fill: white; width: 18px; height: 18px; }}
+        `;
+        window.parent.document.head.appendChild(style);
 
-    const chatHTML = `
-        <div id="chat-tooltip">Need help? 👋</div>
-        <div id="chat-window">
-            <div id="chat-header">
-                <div class="header-title"><div class="online-dot"></div> Wisdope AI</div>
-                <div id="chat-close" onclick="window.toggleWisdopeChat()">✖</div>
-            </div>
-            <div id="chat-messages">
-                <div class="msg-row bot-row">
-                    <div class="avatar">${{botIcon}}</div>
-                    <div class="msg-content">
-                        <div class="msg-bubble bot-msg">{welcome_msg}</div>
-                        <div class="msg-time bot-time">${{getTime()}}</div>
+        const getTime = () => new Date().toLocaleTimeString([], {{ hour: '2-digit', minute: '2-digit' }});
+        const botIcon = `<svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1H1a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73A2 2 0 1 1 12 2zm-3 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>`;
+        const userType = "{user_type}";
+        const userName = "{first_name}";
+
+        const chatHTML = `
+            <div id="chat-tooltip">Need help? 👋</div>
+            <div id="chat-window">
+                <div id="chat-header">
+                    <div class="header-title"><div class="online-dot"></div> Wisdope AI</div>
+                    <div id="chat-close" onclick="window.toggleWisdopeChat()">✖</div>
+                </div>
+                <div id="chat-messages">
+                    <div class="msg-row bot-row">
+                        <div class="avatar">${{botIcon}}</div>
+                        <div class="msg-content">
+                            <div class="msg-bubble bot-msg">{welcome_msg}</div>
+                            <div class="msg-time bot-time">${{getTime()}}</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div id="typing-indicator" class="msg-row bot-row" style="display: none;">
-                <div class="avatar">${{botIcon}}</div>
-                <div class="msg-content"><div class="msg-bubble bot-msg typing-bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
-            </div>
-            <div id="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Ask anything..." onkeypress="window.handleWisdopeEnter(event)" autocomplete="off">
-                <button id="send-btn" onclick="window.sendWisdopeMessage()">
-                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
-                </button>
-            </div>
-        </div>
-        <div id="chat-fab" onclick="window.toggleWisdopeChat()">
-            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path></svg>
-        </div>
-    `;
-    
-    const container = window.parent.document.createElement('div');
-    container.id = 'wisdope-chatbot-container';
-    container.setAttribute('data-user', currentUser);
-    container.innerHTML = chatHTML;
-    window.parent.document.body.appendChild(container);
-
-    // --- TOOLTIP ANIMATION CONTROLLER ---
-    function triggerTooltip() {{
-        const tooltip = window.parent.document.getElementById('chat-tooltip');
-        const chatWin = window.parent.document.getElementById('chat-window');
-        if (tooltip && !chatWin.classList.contains('open')) {{
-            tooltip.classList.add('show');
-            setTimeout(() => {{ tooltip.classList.remove('show'); }}, 5000);
-        }}
-    }}
-    setTimeout(triggerTooltip, 10000);
-    setInterval(triggerTooltip, 300000);
-
-    const getRandomResponse = (array) => array[Math.floor(Math.random() * array.length)];
-
-    window.parent.toggleWisdopeChat = function() {{
-        const chatWin = window.parent.document.getElementById('chat-window');
-        const tooltip = window.parent.document.getElementById('chat-tooltip');
-        if (chatWin.classList.contains('open')) {{
-            chatWin.classList.remove('open');
-            setTimeout(() => chatWin.style.display = 'none', 400); 
-        }} else {{
-            if(tooltip) tooltip.classList.remove('show'); 
-            chatWin.style.display = 'flex';
-            setTimeout(() => chatWin.classList.add('open'), 10);
-            window.parent.document.getElementById('chat-input').focus();
-        }}
-    }};
-
-    window.parent.handleWisdopeEnter = function(e) {{
-        if (e.key === 'Enter') {{ window.parent.sendWisdopeMessage(); }}
-    }};
-
-    window.parent.sendWisdopeMessage = function() {{
-        const inputField = window.parent.document.getElementById('chat-input');
-        const sendBtn = window.parent.document.getElementById('send-btn');
-        const msgBox = window.parent.document.getElementById('chat-messages');
-        const typingInd = window.parent.document.getElementById('typing-indicator');
-        const text = inputField.value.trim();
-        
-        if (!text) return;
-
-        inputField.disabled = true; sendBtn.disabled = true;
-        const timeNow = getTime();
-        msgBox.innerHTML += `
-            <div class="msg-row user-row">
-                <div class="msg-content">
-                    <div class="msg-bubble user-msg">${{text}}</div>
-                    <div class="msg-time user-time">${{timeNow}}</div>
+                <div id="typing-indicator" class="msg-row bot-row" style="display: none;">
+                    <div class="avatar">${{botIcon}}</div>
+                    <div class="msg-content"><div class="msg-bubble bot-msg typing-bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+                </div>
+                <div id="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Ask anything..." onkeypress="window.handleWisdopeEnter(event)" autocomplete="off">
+                    <button id="send-btn" onclick="window.sendWisdopeMessage()">
+                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
                 </div>
             </div>
+            <div id="chat-fab" onclick="window.toggleWisdopeChat()">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path></svg>
+            </div>
         `;
-        inputField.value = '';
-        msgBox.scrollTop = msgBox.scrollHeight;
-
-        msgBox.appendChild(typingInd); 
-        typingInd.style.display = 'flex';
-        msgBox.scrollTop = msgBox.scrollHeight;
         
-        let reply = "";
-        let tLower = text.toLowerCase();
+        const container = window.parent.document.createElement('div');
+        container.id = 'wisdope-chatbot-container';
+        container.setAttribute('data-user', currentUser);
+        container.innerHTML = chatHTML;
+        window.parent.document.body.appendChild(container);
 
-        // 1. STRICT SECURITY PROTOCOL
-        if (tLower.includes('password') && (tLower.includes('admin') || tLower.includes('show') || tLower.includes('tell') || tLower.includes('database') || tLower.includes('secret'))) {{
-            reply = "🛡️ **Security Alert:** I am strictly programmed to protect user data. I cannot reveal any administrative passwords, database links, or sensitive credentials!";
+        function triggerTooltip() {{
+            const tooltip = window.parent.document.getElementById('chat-tooltip');
+            const chatWin = window.parent.document.getElementById('chat-window');
+            if (tooltip && !chatWin.classList.contains('open')) {{
+                tooltip.classList.add('show');
+                setTimeout(() => {{ tooltip.classList.remove('show'); }}, 5000);
+            }}
         }}
-        // 2. THE TECH SUPPORT BUG REPORTER
-        else if (tLower.includes('error') || tLower.includes('bug') || tLower.includes('crash') || tLower.includes('not working') || tLower.includes('glitch')) {{
-            const bugText = encodeURIComponent(`Hi Ronit, I found a bug on the Wisdope website. Here is what happened: `);
-            // Replace YOUR_PHONE_NUMBER_HERE with your actual phone number starting with country code (e.g. 919876543210)
-            reply = `Uh oh, looks like a technical glitch! 🛠️ Please take a screenshot of the error and send it directly to our Digital Architect, Ronit Das.<br>
-            <a href="https://wa.me/YOUR_PHONE_NUMBER_HERE?text=${{bugText}}" target="_blank" class="bot-action-btn" style="background: linear-gradient(135deg, #FF416C, #FF4B2B);">
-                🛠️ Report Bug to Ronit
-            </a>`;
-        }}
-        // 3. ADMIN DASHBOARD GUIDE
-        else if (userType === 'ADMIN' && (tLower.includes('help') || tLower.includes('portal') || tLower.includes('how to use') || tLower.includes('manage'))) {{
-            reply = "Welcome to the Admin Command Center! Here you can: <br><br>📚 **Upload Materials:** Add new PDFs/Links.<br>👥 **Directory:** WhatsApp passwords to students.<br>🧠 **Manage Exams:** Deploy live tests to specific classes!";
-        }}
-        // 4. STUDENT DASHBOARD GUIDE
-        else if (userType !== 'PUBLIC' && userType !== 'ADMIN' && (tLower.includes('help') || tLower.includes('portal') || tLower.includes('how to use') || tLower.includes('feature'))) {{
-            reply = `Welcome to your dashboard, ${{userName}}! You have 3 main areas:<br><br>📚 <b>Study Materials:</b> Get your chapter notes.<br>🧠 <b>Brain Drive:</b> Take live Final Exams or practice quizzes.<br>📢 <b>Notice Board:</b> See the latest updates from Rishav Sir.`;
-        }}
-        // 5. 10TH OF THE MONTH PASSWORD RENEWAL LOGIC
-        else if (tLower.includes('password') || tLower.includes('login') || tLower.includes('can\\'t access') || tLower.includes('wrong') || tLower.includes('invalid')) {{
-            const safePassText = encodeURIComponent(`Hi Rishav Sir, I forgot my Wisdope Academy portal password (or my 10th-of-the-month password didn't arrive). Could you please help me retrieve it?`);
-            reply = `Did you know? **Passwords automatically renew on the 10th of every month!** 🔄<br><br>If it is past the 10th and you cannot log in, please check your WhatsApp for the new password. If you still need help, click below to request it directly from Rishav Sir.<br>
-            <a href="https://wa.me/917044443309?text=${{safePassText}}" target="_blank" class="bot-action-btn">
-                📲 Request New Password
-            </a>`;
-        }}
-        // 6. General Conversations
-        else if (tLower.match(/\\b(hi|hello|hey|yo)\\b/)) {{ reply = getRandomResponse(["Hi there! What can I help you with?", "Hello! Let me know if you have any questions.", "Hey! What's on your mind?"]); }} 
-        else if (tLower.includes('how are you')) {{ reply = "I'm just a few lines of code, but I'm fully charged and ready to assist you!"; }}
-        else if (tLower.includes('who are you') || tLower.includes('your name') || tLower.includes('are you ai')) {{ reply = "I am the Wisdope AI! I exist to help students learn more about our academy, courses, and exams."; }}
-        else if (tLower.includes('thank')) {{ reply = getRandomResponse(["You're very welcome!", "Happy to help!", "My pleasure!"]); }}
-        else if (tLower.includes('join') || tLower.includes('admission') || tLower.includes('enroll') || tLower.includes('register')) {{ reply = "Joining is easy! Just go to the 'Student Registration' tab on this website, fill out the Google Form, and Rishav Sir will contact you within 24 hours."; }}
-        else if (tLower.includes('exam') || tLower.includes('test') || tLower.includes('mock')) {{ reply = "We take testing seriously! Enrolled students get access to 'Brain Drive'—our exclusive portal for live Final Exams and self-assessment Practice tests."; }}
-        else if (tLower.includes('neet') || tLower.includes('medical')) {{ reply = "Yes! We provide comprehensive coaching with specialized NEET (UG) preparation to help you ace your medical entrance exams."; }}
-        else if (tLower.includes('practical') || tLower.includes('lab') || tLower.includes('experiment')) {{ reply = "We believe in hands-on learning. We offer laboratory training and organize two lab research field visits per year!"; }}
-        else if (tLower.includes('doubt') || tLower.includes('extra class')) {{ reply = "Nobody gets left behind. We offer dedicated one-on-one doubt clearing classes to make sure every student fully grasps the concepts."; }}
-        else if (tLower.includes('material') || tLower.includes('notes') || tLower.includes('pdf')) {{ reply = "Absolutely. We provide high-quality study mats for all classes. Just log in to your Student Portal to access them!"; }}
-        else if (tLower.includes('teacher') || tLower.includes('faculty') || tLower.includes('rishav')) {{ reply = "Our Founder is Rishav Karar Sir (MSc. Biotech, R.A. Pharmacognosy) with 6+ years of experience! We also have Dr. Soumyadeep Mondal as our Medical Advisor."; }}
-        else if (tLower.includes('board') || tLower.includes('cbse') || tLower.includes('icse') || tLower.includes('wb')) {{ reply = "We provide specialized coaching for I.C.S.E., I.S.C., C.B.S.E., and West Bengal (W.B.) boards."; }}
-        else if (tLower.includes('subject') || tLower.includes('teach') || tLower.includes('course') || tLower.includes('class')) {{ reply = "We teach Classes VIII to XII. We cover Physics, Chemistry, and Biology (both Theory and Practical sessions)."; }}
-        else if (tLower.includes('developer') || tLower.includes('who made') || tLower.includes('ronit') || tLower.includes('built this')) {{ reply = "This beautiful, high-tech platform was engineered by Ronit Das, our lead Digital Architect! 💻🚀"; }}
-        else if (tLower.includes('fee') || tLower.includes('cost') || tLower.includes('price')) {{ reply = "Our fees depend on your specific class and batch. It is best to contact Rishav Sir directly for the exact fee structure!"; }} 
-        else if (tLower.includes('time') || tLower.includes('routine') || tLower.includes('batch')) {{ reply = "We offer Morning batches (7:00 AM to 10:00 AM) and Evening batches (5:00 PM to 10:00 PM)."; }} 
-        else if (tLower.includes('location') || tLower.includes('address') || tLower.includes('where')) {{ reply = "We are located at 37, Dinu Lane, Kadamtala, Howrah-01 (Opposite the Kadamtala Bus Stand, near S.B. Jewellers)."; }}
-        else if (tLower.includes('contact') || tLower.includes('number') || tLower.includes('call')) {{ reply = "You can call Rishav Sir directly at 9051965176 or send him a message on WhatsApp at 7044443309."; }}
-        else {{
-            const safeText = encodeURIComponent(`Hi Rishav Sir, I was on the Wisdope website and I have a specific question: "${{text}}"`);
-            reply = `That is a great question, but I don't have the exact answer for that yet. Let me forward this directly to Rishav Sir for you!<br>
-            <a href="https://wa.me/917044443309?text=${{safeText}}" target="_blank" class="bot-action-btn">
-                📲 Forward Question to Admin
-            </a>`;
-        }}
+        setTimeout(triggerTooltip, 10000);
+        setInterval(triggerTooltip, 300000);
 
-        const baseDelay = 800;
-        const calcDelay = Math.min(baseDelay + (reply.length * 12), 2200);
+        const getRandomResponse = (array) => array[Math.floor(Math.random() * array.length)];
 
-        setTimeout(() => {{
-            typingInd.style.display = 'none';
-            const botTime = getTime();
+        window.parent.toggleWisdopeChat = function() {{
+            const chatWin = window.parent.document.getElementById('chat-window');
+            const tooltip = window.parent.document.getElementById('chat-tooltip');
+            if (chatWin.classList.contains('open')) {{
+                chatWin.classList.remove('open');
+                setTimeout(() => chatWin.style.display = 'none', 400); 
+            }} else {{
+                if(tooltip) tooltip.classList.remove('show'); 
+                chatWin.style.display = 'flex';
+                setTimeout(() => chatWin.classList.add('open'), 10);
+                window.parent.document.getElementById('chat-input').focus();
+            }}
+        }};
+
+        window.parent.handleWisdopeEnter = function(e) {{
+            if (e.key === 'Enter') {{ window.parent.sendWisdopeMessage(); }}
+        }};
+
+        window.parent.sendWisdopeMessage = function() {{
+            const inputField = window.parent.document.getElementById('chat-input');
+            const sendBtn = window.parent.document.getElementById('send-btn');
+            const msgBox = window.parent.document.getElementById('chat-messages');
+            const typingInd = window.parent.document.getElementById('typing-indicator');
+            const text = inputField.value.trim();
+            
+            if (!text) return;
+
+            inputField.disabled = true; sendBtn.disabled = true;
+            const timeNow = getTime();
             msgBox.innerHTML += `
-                <div class="msg-row bot-row">
-                    <div class="avatar">${{botIcon}}</div>
+                <div class="msg-row user-row">
                     <div class="msg-content">
-                        <div class="msg-bubble bot-msg">${{reply}}</div>
-                        <div class="msg-time bot-time">${{botTime}}</div>
+                        <div class="msg-bubble user-msg">${{text}}</div>
+                        <div class="msg-time user-time">${{timeNow}}</div>
                     </div>
                 </div>
             `;
+            inputField.value = '';
             msgBox.scrollTop = msgBox.scrollHeight;
 
-            inputField.disabled = false;
-            sendBtn.disabled = false;
-            inputField.focus();
+            msgBox.appendChild(typingInd); 
+            typingInd.style.display = 'flex';
+            msgBox.scrollTop = msgBox.scrollHeight;
+            
+            let reply = "";
+            let tLower = text.toLowerCase();
 
-        }}, calcDelay); 
-    }};
-}})();
-</script>
-"""
+            if (tLower.includes('password') && (tLower.includes('admin') || tLower.includes('show') || tLower.includes('tell') || tLower.includes('database') || tLower.includes('secret'))) {{
+                reply = "🛡️ <b>Security Alert:</b> I am strictly programmed to protect user data. I cannot reveal any administrative passwords, database links, or sensitive credentials!";
+            }}
+            else if (tLower.includes('error') || tLower.includes('bug') || tLower.includes('crash') || tLower.includes('not working') || tLower.includes('glitch')) {{
+                const bugText = encodeURIComponent(`Hi Ronit, I found a bug on the Wisdope website. Here is what happened: `);
+                // Replace YOUR_PHONE_NUMBER_HERE with your actual phone number starting with country code (e.g. 919876543210)
+                reply = `Uh oh, looks like a technical glitch! 🛠️ Please take a screenshot of the error and send it directly to our Digital Architect, Ronit Das.<br>
+                <a href="https://wa.me/9874359057?text=${{bugText}}" target="_blank" class="bot-action-btn" style="background: linear-gradient(135deg, #FF416C, #FF4B2B);">
+                    🛠️ Report Bug to Ronit
+                </a>`;
+            }}
+            else if (userType === 'ADMIN' && (tLower.includes('help') || tLower.includes('portal') || tLower.includes('how to use') || tLower.includes('manage'))) {{
+                reply = "Welcome to the Admin Command Center! Here you can: <br><br>📚 <b>Materials:</b> Add new PDFs/Links.<br>📸 <b>Gallery:</b> Upload institute photos.<br>👥 <b>Directory:</b> WhatsApp passwords to students.<br>🚨 <b>News:</b> Publish urgent banners.<br>🌟 <b>Star Student:</b> Update the leaderboard.<br>🧠 <b>Manage Exams:</b> Deploy live tests!";
+            }}
+            else if (userType !== 'PUBLIC' && userType !== 'ADMIN' && (tLower.includes('help') || tLower.includes('portal') || tLower.includes('how to use') || tLower.includes('feature'))) {{
+                reply = `Welcome to your dashboard, ${{userName}}! You have 3 main areas:<br><br>📚 <b>Study Materials:</b> Get your chapter notes.<br>🧠 <b>Brain Drive:</b> Take live Final Exams or practice quizzes.<br>📢 <b>Notice Board:</b> See the latest updates from Rishav Sir.`;
+            }}
+            else if (tLower.includes('password') || tLower.includes('login') || tLower.includes('log in') || tLower.includes('can\\'t access') || tLower.includes('wrong') || tLower.includes('invalid')) {{
+                const safePassText = encodeURIComponent(`Hi Rishav Sir, I forgot my Wisdope Academy portal password (or my 10th-of-the-month password didn't arrive). Could you please help me retrieve it?`);
+                reply = `Did you know? <b>Passwords automatically renew on the 10th of every month!</b> 🔄<br><br>If it is past the 10th and you cannot log in, please check your WhatsApp for the new password. If you still need help, click below to request it directly from Rishav Sir.<br>
+                <a href="https://wa.me/917044443309?text=${{safePassText}}" target="_blank" class="bot-action-btn">
+                    📲 Request New Password
+                </a>`;
+            }}
+            else if (tLower.match(/\\b(hi|hello|hey|yo)\\b/)) {{ reply = getRandomResponse(["Hi there! What can I help you with?", "Hello! Let me know if you have any questions.", "Hey! What's on your mind?"]); }} 
+            else if (tLower.includes('how are you')) {{ reply = "I'm just a few lines of code, but I'm fully charged and ready to assist you!"; }}
+            else if (tLower.includes('who are you') || tLower.includes('your name') || tLower.includes('are you ai')) {{ reply = "I am the Wisdope AI! I exist to help students learn more about our academy, courses, and exams."; }}
+            else if (tLower.includes('thank')) {{ reply = getRandomResponse(["You're very welcome!", "Happy to help!", "My pleasure!"]); }}
+            else if (tLower.includes('join') || tLower.includes('admission') || tLower.includes('enroll') || tLower.includes('register')) {{ reply = "Joining is easy! Just go to the 'Student Registration' tab on this website, fill out the Google Form, and Rishav Sir will contact you within 24 hours."; }}
+            else if (tLower.includes('exam') || tLower.includes('test') || tLower.includes('mock')) {{ reply = "We take testing seriously! Enrolled students get access to 'Brain Drive'—our exclusive portal for live Final Exams and self-assessment Practice tests."; }}
+            else if (tLower.includes('neet') || tLower.includes('medical')) {{ reply = "Yes! We provide comprehensive coaching with specialized NEET (UG) preparation to help you ace your medical entrance exams."; }}
+            else if (tLower.includes('practical') || tLower.includes('lab') || tLower.includes('experiment')) {{ reply = "We believe in hands-on learning. We offer laboratory training and organize two lab research field visits per year!"; }}
+            else if (tLower.includes('doubt') || tLower.includes('extra class')) {{ reply = "Nobody gets left behind. We offer dedicated one-on-one doubt clearing classes to make sure every student fully grasps the concepts."; }}
+            else if (tLower.includes('material') || tLower.includes('notes') || tLower.includes('pdf')) {{ reply = "Absolutely. We provide high-quality study mats for all classes. Just log in to your Student Portal to access them!"; }}
+            else if (tLower.includes('teacher') || tLower.includes('faculty') || tLower.includes('rishav')) {{ reply = "Our Founder is Rishav Karar Sir (MSc. Biotech, R.A. Pharmacognosy) with 6+ years of experience! We also have Dr. Soumyadeep Mondal as our Medical Advisor."; }}
+            else if (tLower.includes('board') || tLower.includes('cbse') || tLower.includes('icse') || tLower.includes('wb')) {{ reply = "We provide specialized coaching for I.C.S.E., I.S.C., C.B.S.E., and West Bengal (W.B.) boards."; }}
+            else if (tLower.includes('subject') || tLower.includes('teach') || tLower.includes('course') || tLower.includes('class')) {{ reply = "We teach Classes VIII to XII. We cover Physics, Chemistry, and Biology (both Theory and Practical sessions)."; }}
+            else if (tLower.includes('developer') || tLower.includes('who made') || tLower.includes('ronit') || tLower.includes('built this')) {{ reply = "This beautiful, high-tech platform was engineered by Ronit Das, our lead Digital Architect! 💻🚀"; }}
+            else if (tLower.includes('fee') || tLower.includes('cost') || tLower.includes('price')) {{ reply = "Our fees depend on your specific class and batch. It is best to contact Rishav Sir directly for the exact fee structure!"; }} 
+            else if (tLower.includes('time') || tLower.includes('routine') || tLower.includes('batch')) {{ reply = "We offer Morning batches (7:00 AM to 10:00 AM) and Evening batches (5:00 PM to 10:00 PM)."; }} 
+            else if (tLower.includes('location') || tLower.includes('address') || tLower.includes('where')) {{ reply = "We are located at 37, Dinu Lane, Kadamtala, Howrah-01 (Opposite the Kadamtala Bus Stand, near S.B. Jewellers)."; }}
+            else if (tLower.includes('contact') || tLower.includes('number') || tLower.includes('call')) {{ reply = "You can call Rishav Sir directly at 9051965176 or send him a message on WhatsApp at 7044443309."; }}
+            else {{
+                const safeText = encodeURIComponent(`Hi Rishav Sir, I was on the Wisdope website and I have a specific question: "${{text}}"`);
+                reply = `That is a great question, but I don't have the exact answer for that yet. Let me forward this directly to Rishav Sir for you!<br>
+                <a href="https://wa.me/917044443309?text=${{safeText}}" target="_blank" class="bot-action-btn">
+                    📲 Forward Question to Admin
+                </a>`;
+            }}
 
-components.html(custom_chat_code, height=0, width=0)
+            const baseDelay = 800;
+            const calcDelay = Math.min(baseDelay + (reply.length * 12), 2200);
+
+            setTimeout(() => {{
+                typingInd.style.display = 'none';
+                const botTime = getTime();
+                msgBox.innerHTML += `
+                    <div class="msg-row bot-row">
+                        <div class="avatar">${{botIcon}}</div>
+                        <div class="msg-content">
+                            <div class="msg-bubble bot-msg">${{reply}}</div>
+                            <div class="msg-time bot-time">${{botTime}}</div>
+                        </div>
+                    </div>
+                `;
+                msgBox.scrollTop = msgBox.scrollHeight;
+
+                inputField.disabled = false;
+                sendBtn.disabled = false;
+                inputField.focus();
+
+            }}, calcDelay); 
+        }};
+    }})();
+    </script>
+    """
+
+    components.html(custom_chat_code, height=0, width=0)
