@@ -1466,7 +1466,6 @@ else:
 
         window.parent.wisdopeChatHistory = window.parent.wisdopeChatHistory || [];
         
-        // UPGRADED AI PROMPT: Tells it to ACTUALLY answer science questions!
         const systemPrompt = `You are the Wisdope AI Assistant, a highly intelligent and energetic academic tutor for Wisdope Academy. 
         CRITICAL RULES: 
         1. Keep answers concise (2-3 sentences). Use emojis to be friendly. 
@@ -1547,15 +1546,19 @@ else:
             if (e.key === 'Enter') {{ window.parent.sendWisdopeMessage(); }}
         }};
 
+        // --- FIXED INJECTION LOGIC ---
         function injectBotMessage(htmlContent) {{
             const msgBox = window.parent.document.getElementById('chat-messages');
             const typingInd = window.parent.document.getElementById('typing-indicator');
             const inputField = window.parent.document.getElementById('chat-input');
             const sendBtn = window.parent.document.getElementById('send-btn');
             
-            typingInd.style.display = 'none';
+            // 1. Smoothly hide the typing indicator
+            if (typingInd) typingInd.style.display = 'none';
             const botTime = getTime();
-            msgBox.innerHTML += `
+            
+            // 2. Build the message HTML
+            const msgHTML = `
                 <div class="msg-row bot-row">
                     <div class="avatar">${{botIcon}}</div>
                     <div class="msg-content">
@@ -1564,10 +1567,18 @@ else:
                     </div>
                 </div>
             `;
+            
+            // 3. Safely insert it right before the hidden typing indicator without rebuilding the chat box!
+            if (typingInd && typingInd.parentNode === msgBox) {{
+                typingInd.insertAdjacentHTML('beforebegin', msgHTML);
+            }} else {{
+                msgBox.insertAdjacentHTML('beforeend', msgHTML);
+            }}
+            
             msgBox.scrollTop = msgBox.scrollHeight;
-            inputField.disabled = false;
-            sendBtn.disabled = false;
-            inputField.focus();
+            if (inputField) inputField.disabled = false;
+            if (sendBtn) sendBtn.disabled = false;
+            if (inputField) inputField.focus();
         }}
 
         window.parent.sendWisdopeMessage = function() {{
@@ -1581,7 +1592,11 @@ else:
 
             inputField.disabled = true; sendBtn.disabled = true;
             const timeNow = getTime();
-            msgBox.innerHTML += `
+            
+            // Ensure typing indicator is ready at the very bottom of the chat box
+            if (typingInd) msgBox.appendChild(typingInd);
+            
+            const userMsgHTML = `
                 <div class="msg-row user-row">
                     <div class="msg-content">
                         <div class="msg-bubble user-msg">${{text}}</div>
@@ -1589,11 +1604,18 @@ else:
                     </div>
                 </div>
             `;
+            
+            // Safely insert user text
+            if (typingInd && typingInd.parentNode === msgBox) {{
+                typingInd.insertAdjacentHTML('beforebegin', userMsgHTML);
+            }} else {{
+                msgBox.insertAdjacentHTML('beforeend', userMsgHTML);
+            }}
+            
             inputField.value = '';
-            msgBox.scrollTop = msgBox.scrollHeight;
-
-            msgBox.appendChild(typingInd); 
-            typingInd.style.display = 'flex';
+            
+            // Show typing indicator
+            if (typingInd) typingInd.style.display = 'flex';
             msgBox.scrollTop = msgBox.scrollHeight;
             
             let tLower = text.toLowerCase();
@@ -1667,7 +1689,7 @@ else:
                     
                     let formattedReply = aiText.replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>').replace(/\\n/g, '<br>');
                     
-                    // NEW SMART BUTTON INJECTOR: If AI ever mentions Rishav Sir's contact info, automatically turn it into a button!
+                    // SMART BUTTON INJECTOR
                     if (formattedReply.includes('7044443309') || formattedReply.includes('9051965176') || formattedReply.toLowerCase().includes('contact rishav')) {{
                         const safeQueryText = encodeURIComponent(`Hi Rishav Sir, I was asking the AI on the website about: "${{text}}" and it told me to contact you.`);
                         formattedReply += `<br><br><a href="https://wa.me/917044443309?text=${{safeQueryText}}" target="_blank" class="bot-action-btn">📲 Chat with Rishav Sir</a>`;
@@ -1689,3 +1711,4 @@ else:
     """
 
     components.html(custom_chat_code, height=0, width=0)
+    
