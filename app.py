@@ -1356,10 +1356,11 @@ st.markdown(
 # ==========================================
 #  THE "GROQ AI" CHATBOT (GLOBAL INJECTOR)
 # ==========================================
+import streamlit.components.v1 as components
 
-# Securely grab the API key (If it fails, it just leaves it blank and shows a warning in chat)
+# Securely grab the API key 
 try:
-    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 except:
     GROQ_API_KEY = ""
 
@@ -1391,7 +1392,7 @@ else:
         first_name = "Guest"
         welcome_msg = "Hello! I am the Wisdope AI Assistant. Ask me anything about admissions, fees, or our faculty!"
 
-    # NOTE: Replace 'YOUR_PHONE_NUMBER_HERE' on line 1282 with your actual phone number
+    # NOTE: Replace YOUR_PHONE_NUMBER_HERE with your actual phone number
     custom_chat_code = f"""
     <script>
     (function() {{
@@ -1463,10 +1464,9 @@ else:
         const userName = "{first_name}";
         const groqKey = "{GROQ_API_KEY}";
 
-        // --- GLOBAL MEMORY FOR AI ---
-        window.parent.wisdopeChatHistory = [];
+        // GLOBAL MEMORY
+        window.parent.wisdopeChatHistory = window.parent.wisdopeChatHistory || [];
         
-        // --- THE AI SYSTEM PROMPT ---
         const systemPrompt = `You are the Wisdope AI Assistant, a helpful and highly energetic virtual guide for Wisdope Academy. 
         RULES: Keep answers very short and concise (1-2 sentences maximum). Use emojis to be friendly. 
         FACTS TO KNOW: 
@@ -1549,7 +1549,6 @@ else:
             if (e.key === 'Enter') {{ window.parent.sendWisdopeMessage(); }}
         }};
 
-        // HELPER: Adds bot message to UI
         function injectBotMessage(htmlContent) {{
             const msgBox = window.parent.document.getElementById('chat-messages');
             const typingInd = window.parent.document.getElementById('typing-indicator');
@@ -1582,7 +1581,6 @@ else:
             
             if (!text) return;
 
-            // Lock input & show user message
             inputField.disabled = true; sendBtn.disabled = true;
             const timeNow = getTime();
             msgBox.innerHTML += `
@@ -1602,18 +1600,15 @@ else:
             
             let tLower = text.toLowerCase();
 
-            // ==========================================
-            // 1. HARDCODED OVERRIDES (Security & Actions)
-            // ==========================================
+            // 1. HARDCODED OVERRIDES 
             if (tLower.includes('password') && (tLower.includes('admin') || tLower.includes('show') || tLower.includes('tell') || tLower.includes('database') || tLower.includes('secret'))) {{
                 setTimeout(() => injectBotMessage("🛡️ <b>Security Alert:</b> I cannot reveal administrative passwords, database links, or sensitive credentials!"), 800);
                 return;
             }}
             else if (tLower.includes('error') || tLower.includes('bug') || tLower.includes('crash') || tLower.includes('not working') || tLower.includes('glitch')) {{
                 const bugText = encodeURIComponent(`Hi Ronit, I found a bug on the website. Here is what happened: `);
-                // CHANGE YOUR PHONE NUMBER HERE:
                 let reply = `Uh oh, a technical glitch! 🛠️ Please take a screenshot and send it to our Digital Architect, Ronit Das.<br>
-                <a href="https://wa.me/9874359057?text=${{bugText}}" target="_blank" class="bot-action-btn" style="background: linear-gradient(135deg, #FF416C, #FF4B2B);">🛠️ Report Bug to Ronit</a>`;
+                <a href="https://wa.me/YOUR_PHONE_NUMBER_HERE?text=${{bugText}}" target="_blank" class="bot-action-btn" style="background: linear-gradient(135deg, #FF416C, #FF4B2B);">🛠️ Report Bug to Ronit</a>`;
                 setTimeout(() => injectBotMessage(reply), 800);
                 return;
             }}
@@ -1635,18 +1630,14 @@ else:
                 return;
             }}
 
-            // ==========================================
-            // 2. GROQ AI CONNECTION (Llama 3)
-            // ==========================================
-            if (!groqKey) {{
-                setTimeout(() => injectBotMessage("⚠️ <b>API Key Missing:</b> Please add the Groq API Key to Streamlit secrets!"), 800);
+            // 2. GROQ AI CONNECTION 
+            if (!groqKey || groqKey === "" || groqKey === "None") {{
+                setTimeout(() => injectBotMessage("⚠️ <b>Missing Configuration:</b> The Groq API Key was not found in the Streamlit Cloud Secrets!"), 800);
                 return;
             }}
 
-            // Save to memory
             window.parent.wisdopeChatHistory.push({{ "role": "user", "content": text }});
 
-            // Keep only the last 6 messages to save tokens and prevent overload
             let recentHistory = window.parent.wisdopeChatHistory.slice(-6);
             let apiPayload = [{{ "role": "system", "content": systemPrompt }}].concat(recentHistory);
 
@@ -1657,31 +1648,32 @@ else:
                     'Content-Type': 'application/json'
                 }},
                 body: JSON.stringify({{
-                    model: 'llama3-8b-8192',
+                    model: 'llama-3.3-70b-versatile', 
                     messages: apiPayload,
                     temperature: 0.6,
                     max_tokens: 150
                 }})
             }})
-            .then(response => response.json())
+            .then(async response => {{
+                const data = await response.json();
+                if (!response.ok) {{
+                    throw new Error(data.error?.message || "HTTP Status " + response.status);
+                }}
+                return data;
+            }})
             .then(data => {{
                 if (data.choices && data.choices.length > 0) {{
                     let aiText = data.choices[0].message.content;
-                    
-                    // Save bot reply to memory
                     window.parent.wisdopeChatHistory.push({{ "role": "assistant", "content": aiText }});
-                    
-                    // Format Markdown (**bold** to <b>bold</b>, and newlines to <br>)
                     let formattedReply = aiText.replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>').replace(/\\n/g, '<br>');
-                    
                     injectBotMessage(formattedReply);
                 }} else {{
-                    injectBotMessage("Sorry, my brain disconnected for a second! Please try asking again.");
+                    injectBotMessage("Sorry, I received an empty response from the server.");
                 }}
             }})
             .catch(error => {{
                 console.error("Groq Error:", error);
-                injectBotMessage("⚠️ I'm having trouble connecting to my AI servers right now. Please try again later!");
+                injectBotMessage("⚠️ <b>Groq API Error:</b> " + error.message);
             }});
             
         }};
