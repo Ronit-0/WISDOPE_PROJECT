@@ -1365,8 +1365,23 @@ else:
 # NOTE: Replace 'YOUR_PHONE_NUMBER_HERE' on line 1251 with your actual phone number so students can send you bugs!
 custom_chat_code = f"""
 <script>
-if (!window.parent.document.getElementById('wisdope-chatbot-container')) {{
+(function() {{
+    const currentUser = "{first_name}";
+    const existingContainer = window.parent.document.getElementById('wisdope-chatbot-container');
+    const existingStyle = window.parent.document.getElementById('wisdope-chatbot-style');
+    
+    // IDENTITY CHECK: Destroy old bot if the user logs in or out
+    if (existingContainer) {{
+        if (existingContainer.getAttribute('data-user') === currentUser) {{
+            return; // User is the same, keep the current chat history!
+        }} else {{
+            existingContainer.remove();
+            if (existingStyle) existingStyle.remove();
+        }}
+    }}
+
     const style = window.parent.document.createElement('style');
+    style.id = 'wisdope-chatbot-style';
     style.innerHTML = `
         #wisdope-chatbot-container {{ position: fixed; bottom: 25px; right: 25px; z-index: 999999; font-family: 'Segoe UI', Tahoma, sans-serif; }}
         #chat-fab {{ width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(135deg, #8A2BE2, #4B0082); box-shadow: 0 4px 20px rgba(138, 43, 226, 0.6), 0 0 0 2px rgba(0, 229, 255, 0.8); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease; float: right; position: relative; }}
@@ -1464,6 +1479,7 @@ if (!window.parent.document.getElementById('wisdope-chatbot-container')) {{
     
     const container = window.parent.document.createElement('div');
     container.id = 'wisdope-chatbot-container';
+    container.setAttribute('data-user', currentUser);
     container.innerHTML = chatHTML;
     window.parent.document.body.appendChild(container);
 
@@ -1471,13 +1487,11 @@ if (!window.parent.document.getElementById('wisdope-chatbot-container')) {{
     function triggerTooltip() {{
         const tooltip = window.parent.document.getElementById('chat-tooltip');
         const chatWin = window.parent.document.getElementById('chat-window');
-        // Only show if the chat window is closed
         if (tooltip && !chatWin.classList.contains('open')) {{
             tooltip.classList.add('show');
             setTimeout(() => {{ tooltip.classList.remove('show'); }}, 5000);
         }}
     }}
-    // Trigger after 10 seconds, then every 5 minutes (300000 ms)
     setTimeout(triggerTooltip, 10000);
     setInterval(triggerTooltip, 300000);
 
@@ -1490,7 +1504,7 @@ if (!window.parent.document.getElementById('wisdope-chatbot-container')) {{
             chatWin.classList.remove('open');
             setTimeout(() => chatWin.style.display = 'none', 400); 
         }} else {{
-            if(tooltip) tooltip.classList.remove('show'); // Hide tooltip when opening
+            if(tooltip) tooltip.classList.remove('show'); 
             chatWin.style.display = 'flex';
             setTimeout(() => chatWin.classList.add('open'), 10);
             window.parent.document.getElementById('chat-input').focus();
@@ -1609,7 +1623,7 @@ if (!window.parent.document.getElementById('wisdope-chatbot-container')) {{
 
         }}, calcDelay); 
     }};
-}}
+}})();
 </script>
 """
 
