@@ -42,9 +42,17 @@ def set_custom_style():
             color: white;
             margin-bottom: -10px;
         }}
+
+        /* --- SMOOTH PAGE TRANSITION ANIMATIONS --- */
+        @keyframes fadeSlideUp {{
+            0% {{ opacity: 0; transform: translateY(30px) scale(0.98); }}
+            100% {{ opacity: 1; transform: translateY(0) scale(1); }}
+        }}
+        div[role="tabpanel"] {{
+            animation: fadeSlideUp 0.6s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+        }}
         </style>
-    """, unsafe_allow_html=True)
-    
+    """, unsafe_allow_html=True)    
 set_custom_style()
 
 # ==========================================
